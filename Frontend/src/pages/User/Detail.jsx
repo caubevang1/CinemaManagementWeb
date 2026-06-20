@@ -35,15 +35,15 @@ export default function Detail() {
         const fetchData = async (id) => {
             try {
                 const apiChiTiet = await LayThongTinPhimChiTiet(id);
-                dispatch(getfilmDetail(apiChiTiet.data));
+                dispatch(getfilmDetail(apiChiTiet.data.body));
                 setIsLoadingDetail(false);
-                setPercent(apiChiTiet.data.movieReview * 20);
+                setPercent(apiChiTiet.data.body.movieReview * 20);
                 const apiCinemas = await layThongTinCumRap();
-                setCinemas(apiCinemas.data);
+                setCinemas(apiCinemas.data.body);
                 const apiRooms = await layThongTinPhong();
-                setRooms(apiRooms.data);
+                setRooms(apiRooms.data.body);
                 const apiSchedule = await LayThongTinLichChieu();
-                setShowtimes(apiSchedule.data);
+                setShowtimes(apiSchedule.data.body);
             } catch (error) {
                 history.replace('/notfound');
             }
@@ -166,6 +166,21 @@ export default function Detail() {
                                         {filmDetail.movieDescription}
                                     </p>
                                 </div>
+
+                                {filmDetail.trailerUrl && (
+                                    <div className="mt-6">
+                                        <h3 className="text-white font-bold text-xl mb-3">Trailer</h3>
+                                        <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+                                            <iframe
+                                                className="absolute top-0 left-0 w-full h-full rounded-lg"
+                                                src={`https://www.youtube.com/embed/${new URLSearchParams(new URL(filmDetail.trailerUrl).search).get('v')}`}
+                                                title="Trailer"
+                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                allowFullScreen
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="mt-4 xl:hidden">
                                     <a
                                         href="#showtime"

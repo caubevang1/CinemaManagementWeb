@@ -66,7 +66,6 @@ export default function ResetPassword() {
             navigate('/login');
         } catch (err) {
             SwalConfig(
-                err?.response?.data?.content ||
                 err?.response?.data?.message ||
                 'Lỗi đặt lại mật khẩu',
                 'error',

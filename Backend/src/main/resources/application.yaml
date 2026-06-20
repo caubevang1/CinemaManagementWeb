@@ -1,0 +1,53 @@
+server:
+  port: 8080
+
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+  jackson:
+    date-format: yyyy-MM-dd
+    time-format: HH:mm:ss
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            trust: smtp.gmail.com
+
+jwt:
+  signerKey: ${JWT_SIGNER_KEY}
+  # TTL tính bằng giây
+  access-token-ttl: 900       # 15 phút
+  refresh-token-ttl: 864000   # 10 ngày
+  refresh-rotation-grace: 60  # giây: cửa sổ cho phép refresh đồng thời nhận lại cùng token mới
+  # Cookie chứa refresh token
+  refresh-cookie:
+    name: refresh_token
+    path: /auth
+    secure: false             # bật true khi chạy HTTPS (production)
+    same-site: Strict
+
+tmdb:
+  api-key: ${TMDB_KEY}
+  base-url: https://api.themoviedb.org/3
+  image-base-url: https://image.tmdb.org/t/p/w500
+
+

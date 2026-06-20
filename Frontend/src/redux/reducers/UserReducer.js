@@ -98,7 +98,7 @@ export const callApiDeleteUser = (id) => async (dispatch) => {
         SwalConfig("Xóa thành công", 'success', false)
         history.push('/admin/user')
     } catch (error) {
-        SwalConfig(error.response.data.content, 'error', false)
+        SwalConfig(error?.response?.data?.message || 'Lỗi hệ thống', 'error', false)
         history.push('/admin/user')
     }
 }
@@ -122,7 +122,7 @@ export const capNhatNguoiDung = (user) => async (dispatch) => {
         }
     } catch (error) {
         console.log(error)
-        SwalConfig(`${error?.response?.data?.content || 'Lỗi hệ thống'}`, 'error', true, 3000)
+        SwalConfig(`${error?.response?.data?.message || 'Lỗi hệ thống'}`, 'error', true, 3000)
     }
 }
 

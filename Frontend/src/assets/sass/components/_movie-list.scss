@@ -1,3 +1,5 @@
+@use '../abstracts/mixin' as *;
+
 .movie-list {
     .film-name-card-mobile {
         font-size: 11px;

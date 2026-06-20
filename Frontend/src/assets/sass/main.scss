@@ -1,25 +1,21 @@
-// Abstracts
-@import './abstracts/variables';
-@import './abstracts/mixin';
-
 // Base
-@import './base/reset';
+@use './base/reset';
 
 // Components
-@import './components/carousel';
-@import './components/movie-list';
-@import './components/card';
-@import './components/tab';
+@use './components/carousel';
+@use './components/movie-list';
+@use './components/card';
+@use './components/tab';
 
 // Layout
-@import './layout/footer';
+@use './layout/footer';
 
 // Pages
-@import './pages/login';
-@import './pages/register';
-@import './pages/detail';
-@import './pages/news';
-@import './pages/about';
-@import './pages/booking';
-@import './pages/admin';
-@import './pages/userInfo'
+@use './pages/login';
+@use './pages/register';
+@use './pages/detail';
+@use './pages/news';
+@use './pages/about';
+@use './pages/booking';
+@use './pages/admin';
+@use './pages/userInfo';

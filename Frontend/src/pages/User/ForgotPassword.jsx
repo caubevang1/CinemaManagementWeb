@@ -25,7 +25,6 @@ export default function ForgotPassword() {
         } catch (err) {
             const message =
                 err?.response?.data?.message ||
-                err?.response?.data?.content ||
                 err?.message ||
                 'Lỗi gửi OTP';
             SwalConfig(message, 'error', true, 3000);

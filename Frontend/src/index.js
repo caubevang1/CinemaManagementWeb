@@ -6,7 +6,7 @@ import { store } from './redux/store'
 import 'antd/dist/reset.css'
 import './assets/sass/main.scss'
 import './index.css';
-import "slick-carousel/slick/slick.css"; 
+import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import 'animate.css';
 

@@ -28,7 +28,7 @@ export default function AdminTemplate() {
         const fetchUserInfo = async () => {
             try {
                 const res = await LayThongTinTaiKhoan();
-                const userData = res.data?.body || res.data?.content || res.data;
+                const userData = res.data?.body;
 
                 // Kiểm tra role có phải là admin không
                 const isAdmin = userData.roles?.some(role => role.name === 'ADMIN');

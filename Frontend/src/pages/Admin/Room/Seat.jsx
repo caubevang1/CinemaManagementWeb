@@ -46,7 +46,7 @@ const SeatManager = () => {
         setLoading(true);
         try {
             const res = await LayDanhSachGhe();
-            const filteredSeats = res.data.filter(s => String(s.roomId) === String(roomId));
+            const filteredSeats = res.data.body.filter(s => String(s.roomId) === String(roomId));
             setSeats(filteredSeats);
 
             const seatPrices = filteredSeats.reduce((acc, seat) => {
@@ -82,7 +82,7 @@ const SeatManager = () => {
     const updateRoomStructure = async () => {
         try {
             const res = await LayDanhSachGhe();
-            const filteredSeats = res.data.filter(s => String(s.roomId) === String(roomDetail.roomId));
+            const filteredSeats = res.data.body.filter(s => String(s.roomId) === String(roomDetail.roomId));
 
             const rows = [...new Set(filteredSeats.map(s => s.seatRow))];
             const maxCol = Math.max(...filteredSeats.map(s => Number(s.seatNumber) || 0));

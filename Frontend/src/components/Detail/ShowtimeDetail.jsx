@@ -16,13 +16,13 @@ export default function ShowtimeDetail() {
     useEffect(() => {
         const fetchData = async () => {
             const lichChieuRes = await LayThongTinLichChieu();
-            const filteredLichChieu = lichChieuRes.data.filter(
+            const filteredLichChieu = lichChieuRes.data.body.filter(
                 (lich) => lich.movieName === movieName
             );
             setLichChieu(filteredLichChieu);
 
             const cumRapRes = await layThongTinCumRap();
-            setCumRapChieu(cumRapRes.data);
+            setCumRapChieu(cumRapRes.data.body);
         };
 
         if (movieName) {

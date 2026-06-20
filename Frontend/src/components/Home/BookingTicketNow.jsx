@@ -34,7 +34,7 @@ export default function BookingTicketNow(props) {
     const callApiLichChieuTheoPhim = async (movieId) => {
         try {
             const res = await LayThongTinLichChieu();
-            const lichChieu = res.data || [];
+            const lichChieu = res.data.body || [];
             const filteredLichChieu = lichChieu.filter(item => item.movieId === Number(movieId));
             const danhSachRap = layDanhSachCumRap(filteredLichChieu);
 

@@ -35,14 +35,14 @@ export const themCumRapApi = async (formData) => {
         SwalConfig('Thêm cụm rạp thành công', 'success', true)
         history.push('/admin/cinema')
     } catch (error) {
-        SwalConfig(`${error.response.data.content}`, 'error', true, 3000)
+        SwalConfig(`${error?.response?.data?.message || 'Lỗi hệ thống'}`, 'error', true, 3000)
     }
 }
 
 export const callApiCinema = async (dispatch) => {
     try {
         const apiCinema = await layThongTinCumRap();
-        dispatch(getCinemaList(apiCinema.data))
+        dispatch(getCinemaList(apiCinema.data.body))
     } catch (error) {
         console.log(error)
     }
@@ -52,10 +52,10 @@ export const callApiXoaCinema = (CinemaId) => async (dispatch) => {
     try {
         const result = await xoaCumRap(CinemaId)
         dispatch(callApiCinema)
-        SwalConfig(result.data.content, 'success', false)
+        SwalConfig(result.data.message, 'success', false)
         history.push('/admin/cinema')
     } catch (error) {
-        SwalConfig(`${error.response.data.content}`, 'error', true, 3000)
+        SwalConfig(`${error?.response?.data?.message || 'Lỗi hệ thống'}`, 'error', true, 3000)
     }
 }
 
@@ -65,14 +65,14 @@ export const capNhatCumRapApi = async (formData, id) => {
         SwalConfig('Cập nhật thành công', 'success', true)
         history.push('/admin/cinema')
     } catch (error) {
-        SwalConfig(`${error.response.data.content}`, 'error', true, 3000)
+        SwalConfig(`${error?.response?.data?.message || 'Lỗi hệ thống'}`, 'error', true, 3000)
     }
 }
 
 export const callApiThongTinCumRap = (cinemaId) => async (dispatch) => {
     try {
         const result = await layThongTinCumRapChiTiet(cinemaId)
-        dispatch(layThongTinCumRapDung(result.data))
+        dispatch(layThongTinCumRapDung(result.data.body))
     } catch (error) {
         console.log(error)
     }

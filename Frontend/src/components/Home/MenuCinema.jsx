@@ -15,9 +15,9 @@ export default function MenuCinema() {
     const [lichChieuList, setLichChieuList] = useState([]);
 
     useEffect(() => {
-        layThongTinCumRap().then(res => setCumRapList(res.data)).catch(console.error);
-        LayDanhSachPhim().then(res => setPhimList(res.data)).catch(console.error);
-        LayThongTinLichChieu().then(res => setLichChieuList(res.data)).catch(console.error);
+        layThongTinCumRap().then(res => setCumRapList(res.data.body)).catch(console.error);
+        LayDanhSachPhim().then(res => setPhimList(res.data.body)).catch(console.error);
+        LayThongTinLichChieu().then(res => setLichChieuList(res.data.body)).catch(console.error);
     }, []);
 
     useEffect(() => {

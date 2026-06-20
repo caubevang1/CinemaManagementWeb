@@ -29,9 +29,9 @@ const BookingTicketPage = () => {
         dispatch(callApiThongTinNguoiDung);
         (async () => {
             try {
-                const sch = (await LayDanhSachPhongVeService(param.id)).data;
-                const allSeats = (await LayDanhSachGheSchedule()).data;
-                const rooms = (await layThongTinPhong()).data;
+                const sch = (await LayDanhSachPhongVeService(param.id)).data.body;
+                const allSeats = (await LayDanhSachGheSchedule()).data.body;
+                const rooms = (await layThongTinPhong()).data.body;
                 const room = rooms.find(r => r.roomId === sch.roomId);
                 if (room) {
                     setSeatConfig({

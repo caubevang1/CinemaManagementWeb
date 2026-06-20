@@ -23,7 +23,7 @@ export default function BookingFoodAndDrink() {
                 }
 
                 const res = await LayThongTinFoodAndDrink();
-                const filtered = res.data.filter(item => item.cinemaName === stored.cinemaName);
+                const filtered = res.data.body.filter(item => item.cinemaName === stored.cinemaName);
                 setFoodList(filtered);
             } catch (err) {
                 console.error('Lỗi khi lấy dữ liệu món ăn:', err);

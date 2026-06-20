@@ -1,3 +1,6 @@
+@use 'sass:map';
+@use 'variables' as *;
+
 @mixin FormLoginRegister {
     background: url('../../img/minion.jpg');
     height: 100vh;
@@ -97,8 +100,8 @@
 
 // ví dụ:  @include responsive('Small')
 @mixin responsive($screen) {
-    @if(map-has-key($map: $breakpoint, $key: $screen)) {
-        $value: map-get($map: $breakpoint, $key: $screen);
+    @if(map.has-key($map: $breakpoint, $key: $screen)) {
+        $value: map.get($map: $breakpoint, $key: $screen);
 
         @media screen and (max-width: $value) {
             @content;

@@ -27,7 +27,7 @@ export default function Home() {
         const getApiHeThongRapChieu = async () => {
             try {
                 const apiHeThongRap = await LayThongTinLichChieu();
-                dispatch(LayHeThongRapChieu(apiHeThongRap.data));
+                dispatch(LayHeThongRapChieu(apiHeThongRap.data.body));
                 setIsLoading(false);
             } catch (error) {
                 console.log(error);

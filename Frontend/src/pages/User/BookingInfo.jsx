@@ -27,7 +27,7 @@ const ThongTinBooking = () => {
             for (let id of foodAndDrinkIds) {
                 try {
                     const response = await LayThongTinFoodAndDrinkChiTiet(id);
-                    foodDetailsMap[id] = response.data;
+                    foodDetailsMap[id] = response.data.body;
                 } catch (error) {
                     console.error("Lỗi khi lấy thông tin món ăn/thức uống:", error);
                 }
@@ -44,7 +44,7 @@ const ThongTinBooking = () => {
             try {
                 const response = await LayDanhSachGheSchedule();
                 const seatDetailsMap = {};
-                response.data.forEach(seat => {
+                response.data.body.forEach(seat => {
                     seatDetailsMap[seat.seatScheduleId] = `${seat.seatNumber}${seat.seatRow}`;
                 });
 

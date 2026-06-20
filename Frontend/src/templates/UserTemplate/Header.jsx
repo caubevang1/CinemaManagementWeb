@@ -46,7 +46,7 @@ const Header = () => {
     useEffect(() => {
         if (isLogin) {
             LayThongTinTaiKhoan()
-                .then(res => setAccountInfo(res.data))
+                .then(res => setAccountInfo(res.data.body))
                 .catch(err => console.error("Lỗi lấy thông tin tài khoản:", err));
         }
     }, [isLogin]);

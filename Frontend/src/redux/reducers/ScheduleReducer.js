@@ -34,7 +34,7 @@ export const fetchSchedules = () => async (dispatch) => {
     dispatch(setLoading(true));
     try {
         const response = await LayThongTinLichChieu();
-        dispatch(setSchedules(response.data));
+        dispatch(setSchedules(response.data.body));
         dispatch(setLoading(false));
     } catch (error) {
         dispatch(setError(error.message));

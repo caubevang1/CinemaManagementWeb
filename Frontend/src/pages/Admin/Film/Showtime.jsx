@@ -45,10 +45,10 @@ export default function Showtime() {
                 };
 
                 const result = await TaoLichChieu(requestData);
-                SwalConfig(result.data.content, 'success', true);
+                SwalConfig(result.data.message, 'success', true);
                 navigate('/admin/film');
             } catch (error) {
-                SwalConfig(error.response?.data?.content || 'Đã có lỗi xảy ra', 'error', true, 3000);
+                SwalConfig(error.response?.data?.message || 'Đã có lỗi xảy ra', 'error', true, 3000);
             }
         }
     });
@@ -58,8 +58,8 @@ export default function Showtime() {
             try {
                 setLoading(true);
                 const result = await LayThongTinPhimChiTiet(param.id);
-                if (result?.data?.movieLength) {
-                    setMovieLength(result.data.movieLength);
+                if (result?.data?.body?.movieLength) {
+                    setMovieLength(result.data.body.movieLength);
                 } else {
                     console.error('Không lấy được độ dài phim');
                 }
@@ -78,13 +78,13 @@ export default function Showtime() {
             try {
                 setLoading(true);
                 const result = await layThongTinCumRap();
-                if (Array.isArray(result.data)) {
+                if (Array.isArray(result.data.body)) {
                     setState(prev => ({
                         ...prev,
-                        cumRapChieu: result.data,
+                        cumRapChieu: result.data.body,
                     }));
                 } else {
-                    console.error('Dữ liệu cụm rạp không hợp lệ:', result.data);
+                    console.error('Dữ liệu cụm rạp không hợp lệ:', result.data.body);
                 }
             } catch (error) {
                 console.error('Lỗi lấy cụm rạp:', error);
@@ -103,7 +103,7 @@ export default function Showtime() {
         try {
             setLoading(true);
             const result = await layThongTinPhong();
-            const rooms = Array.isArray(result.data) ? result.data : result.data.content || [];
+            const rooms = Array.isArray(result.data.body) ? result.data.body : [];
             const filteredRooms = rooms.filter(room => room.cinemaId === cinemaId);
             setState(prev => ({
                 ...prev,

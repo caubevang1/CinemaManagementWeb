@@ -4,7 +4,6 @@ import { faCircleCheck } from '@fortawesome/free-solid-svg-icons';
 import { kiemTraDinhDang, kiemTraDoDai, kiemTraRong } from '../../utils/validation';
 import { SwalConfig } from '../../utils/config';
 import { DangKy } from '../../services/UserService';
-import { GROUPID } from '../../utils/constant';
 import useRoute from '../../hooks/useRoute';
 
 class Register extends Component {
@@ -81,7 +80,7 @@ class Register extends Component {
             SwalConfig('Đăng ký thành công', 'success', false);
             this.props.navigate('/login');
         } catch (error) {
-            SwalConfig(error.response?.data?.content || 'Đăng ký thất bại', 'error', true, 3000);
+            SwalConfig(error.response?.data?.message || 'Đăng ký thất bại', 'error', true, 3000);
         }
     }
 

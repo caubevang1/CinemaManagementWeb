@@ -38,7 +38,7 @@ export default FilmReducer.reducer
 export const callApiLichChieuTheoPhim = (value) => async (dispatch) => {
     try {
         const apiLichChieu = await LayThongTinLichChieuChiTiet(value)
-        dispatch(getLichChieuTheoPhim(apiLichChieu.data))
+        dispatch(getLichChieuTheoPhim(apiLichChieu.data.body))
     } catch (error) {
         console.log(error)
     }
@@ -47,7 +47,7 @@ export const callApiLichChieuTheoPhim = (value) => async (dispatch) => {
 export const callApiFilm = async (dispatch) => {
     try {
         const apiFilm = await LayDanhSachPhim()
-        dispatch(getFilmList(apiFilm.data))
+        dispatch(getFilmList(apiFilm.data.body))
     } catch (error) {
         console.log(error)
     }
@@ -59,7 +59,7 @@ export const themPhimApi = async (formData) => {
         SwalConfig('Thêm phim thành công', 'success', true)
         history.push('/admin/film')
     } catch (error) {
-        SwalConfig(`${error.response.data.content}`, 'error', true, 3000)
+        SwalConfig(`${error?.response?.data?.message || 'Lỗi hệ thống'}`, 'error', true, 3000)
     }
 }
 
@@ -67,7 +67,7 @@ export const themPhimApi = async (formData) => {
 export const callApiThongTinPhim = (movieId) => async (dispatch) => {
     try {
         const result = await LayThongTinPhimChiTiet(movieId)
-        dispatch(layThongTinPhim(result.data))
+        dispatch(layThongTinPhim(result.data.body))
     } catch (error) {
         console.log(error)
     }
@@ -80,7 +80,7 @@ export const upDateFilm = async (formData, id) => {
         SwalConfig('Cập nhật thành công', 'success', true)
         history.push('/admin/film')
     } catch (error) {
-        SwalConfig(`${error.response.data.content}`, 'error', true, 3000)
+        SwalConfig(`${error?.response?.data?.message || 'Lỗi hệ thống'}`, 'error', true, 3000)
     }
 }
 
@@ -88,9 +88,9 @@ export const callApiXoaPhim = (movieId) => async (dispatch) => {
     try {
         const result = await xoaPhim(movieId)
         dispatch(callApiFilm)
-        SwalConfig(result.data.content, 'success', false)
+        SwalConfig(result.data.message, 'success', false)
         history.push('/admin/film')
     } catch (error) {
-        SwalConfig(`${error.response.data.content}`, 'error', true, 3000)
+        SwalConfig(`${error?.response?.data?.message || 'Lỗi hệ thống'}`, 'error', true, 3000)
     }
 }

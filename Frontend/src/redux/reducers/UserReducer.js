@@ -114,11 +114,14 @@ export const callApiThongTinNguoiDungEdit = (user) => async (dispatch) => {
 
 export const capNhatNguoiDung = (user) => async (dispatch) => {
     try {
-        await CapNhatThongTinNguoiDung(user)
+        const result = await CapNhatThongTinNguoiDung(user)
         SwalConfig('Cập nhật thành công', 'success', true)
-        dispatch(callApiUser)
         if (window.location.pathname.includes('/admin')) {
+            dispatch(callApiUser)
             history.push('/admin/user');
+        } else {
+            dispatch(setUserInfor(result.data.body))
+            dispatch(callApiThongTinNguoiDung)
         }
     } catch (error) {
         console.log(error)

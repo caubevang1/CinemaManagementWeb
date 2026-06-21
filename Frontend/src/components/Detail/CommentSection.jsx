@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import moment from 'moment';
-import { Avatar } from 'antd';
-import { UserOutlined } from '@ant-design/icons';
 import {
     LayBinhLuanTheoPhim,
     TaoBinhLuan,
@@ -10,6 +8,7 @@ import {
     XoaBinhLuan,
 } from '../../services/CommentService';
 import { SwalConfig, confirmSwal } from '../../utils/config';
+import UserAvatar from '../UserAvatar';
 
 export default function CommentSection({ movieId }) {
     const { thongTinNguoiDung, isLogin } = useSelector((s) => s.UserReducer);
@@ -112,10 +111,10 @@ export default function CommentSection({ movieId }) {
 
     const renderComment = (c, isReply = false) => (
         <div key={c.commentId} className={`flex gap-3 ${isReply ? 'mt-4' : 'py-4 border-b border-white/10'}`}>
-            <Avatar
+            <UserAvatar
                 size={isReply ? 36 : 44}
-                src={c.avatar || undefined}
-                icon={<UserOutlined />}
+                avatar={c.avatar}
+                name={c.authorName}
             />
             <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -235,7 +234,14 @@ export default function CommentSection({ movieId }) {
 
                 {isLogin ? (
                     <div className="flex gap-3 mb-8">
-                        <Avatar size={44} src={thongTinNguoiDung?.avatar || undefined} icon={<UserOutlined />} />
+                        <UserAvatar
+                            size={44}
+                            avatar={thongTinNguoiDung?.avatar}
+                            firstName={thongTinNguoiDung?.firstName}
+                            lastName={thongTinNguoiDung?.lastName}
+                            username={thongTinNguoiDung?.username}
+                            email={thongTinNguoiDung?.email}
+                        />
                         <div className="flex-1">
                             <textarea
                                 className="w-full rounded-lg p-3 text-gray-800 resize-none"

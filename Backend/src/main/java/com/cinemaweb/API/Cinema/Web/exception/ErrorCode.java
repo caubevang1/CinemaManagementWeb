@@ -74,6 +74,8 @@ public enum ErrorCode {
     FRIEND_REQUEST_EXISTS(7004, "Lời mời kết bạn hoặc quan hệ bạn bè đã tồn tại!", HttpStatus.BAD_REQUEST),
     FRIEND_REQUEST_NOT_EXISTS(7005, "Lời mời kết bạn không tồn tại!", HttpStatus.BAD_REQUEST),
     FRIEND_NOT_AUTHORIZED(7006, "Bạn không có quyền với quan hệ bạn bè này!", HttpStatus.FORBIDDEN),
+    CHAT_NOT_FRIENDS(7007, "Chỉ có thể nhắn tin với bạn bè!", HttpStatus.FORBIDDEN),
+    MESSAGE_EMPTY(7008, "Nội dung tin nhắn không được để trống!", HttpStatus.BAD_REQUEST),
 
     // ─────────────── 8xxx: File Upload Errors ───────────────
     FILE_EMPTY(8001, "File tải lên không được để trống!", HttpStatus.BAD_REQUEST),

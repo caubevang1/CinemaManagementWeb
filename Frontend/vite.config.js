@@ -7,6 +7,10 @@ export default defineConfig({
       include: '**/*.{jsx,js}',
     }),
   ],
+  // sockjs-client tham chiếu biến `global` của Node — cần polyfill khi chạy trên trình duyệt (Vite).
+  define: {
+    global: 'globalThis',
+  },
   esbuild: {
     loader: 'jsx',
     include: /src\/.*\.jsx?$/,

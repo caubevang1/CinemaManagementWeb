@@ -672,6 +672,42 @@ LOCK TABLES `friendship` WRITE;
 /*!40000 ALTER TABLE `friendship` ENABLE KEYS */
 ;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `chat_message`
+--
+
+DROP TABLE IF EXISTS `chat_message`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */
+;
+/*!50503 SET character_set_client = utf8mb4 */
+;
+CREATE TABLE `chat_message` (
+    `message_id` int NOT NULL AUTO_INCREMENT,
+    `sender_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `recipient_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `sent_at` datetime NOT NULL,
+    `read_at` datetime DEFAULT NULL,
+    PRIMARY KEY (`message_id`),
+    KEY `idx_chat_pair` (`sender_id`, `recipient_id`, `sent_at`),
+    KEY `idx_chat_unread` (`recipient_id`, `read_at`),
+    CONSTRAINT `fk_chat_sender` FOREIGN KEY (`sender_id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_chat_recipient` FOREIGN KEY (`recipient_id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */
+;
+
+--
+-- Dumping data for table `chat_message`
+--
+
+LOCK TABLES `chat_message` WRITE;
+/*!40000 ALTER TABLE `chat_message` DISABLE KEYS */
+;
+/*!40000 ALTER TABLE `chat_message` ENABLE KEYS */
+;
+UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */
 ;
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Progress, Modal } from 'antd';
+import { Progress, Modal, Button } from 'antd';
+import { PlayCircleOutlined } from '@ant-design/icons';
 import moment from 'moment';
 import useRoute from '../../hooks/useRoute';
 import { getfilmDetail } from '../../redux/reducers/FilmReducer';
@@ -101,7 +102,7 @@ export default function Detail() {
                                     <span>{filmDetail.movieLength} phút</span>
                                 </div>
 
-                                <div className="mt-4 xl:mt-0 flex items-center">
+                                <div className="mt-4 xl:mt-0 flex flex-wrap items-center gap-6">
                                     <div
                                         style={{
                                             display: 'flex',
@@ -160,6 +161,15 @@ export default function Detail() {
                                             </p>
                                         </div>
                                     </div>
+                                    {filmDetail.trailerUrl && (
+                                        <Button
+                                            className="trailer-detail-button"
+                                            icon={<PlayCircleOutlined />}
+                                            onClick={() => showModal(filmDetail.trailerUrl)}
+                                        >
+                                            Xem trailer
+                                        </Button>
+                                    )}
                                 </div>
 
                                 <div className="mt-6">
@@ -169,20 +179,6 @@ export default function Detail() {
                                     </p>
                                 </div>
 
-                                {filmDetail.trailerUrl && (
-                                    <div className="mt-6">
-                                        <h3 className="text-white font-bold text-xl mb-3">Trailer</h3>
-                                        <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
-                                            <iframe
-                                                className="absolute top-0 left-0 w-full h-full rounded-lg"
-                                                src={`https://www.youtube.com/embed/${new URLSearchParams(new URL(filmDetail.trailerUrl).search).get('v')}`}
-                                                title="Trailer"
-                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                allowFullScreen
-                                            />
-                                        </div>
-                                    </div>
-                                )}
                                 <div className="mt-4 xl:hidden">
                                     <a
                                         href="#showtime"
@@ -205,6 +201,14 @@ export default function Detail() {
                         </div>
                     </div>
                 </div>
+                {isModalOpen ? <Modal
+                    footer={null}
+                    centered
+                    closable={false}
+                    open={isModalOpen}
+                    onCancel={handleCancel}>
+                    <iframe id='videoId' title="Trailer" className="w-full h-full rounded-xl" src={`https://www.youtube.com/embed/${dataVideoModal}`} allowFullScreen></iframe>
+                </Modal> : ''}
                 <CommentSection movieId={param.id} />
                 </>
             )}

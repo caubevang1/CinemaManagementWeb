@@ -4,9 +4,14 @@ import { callApiThongTinNguoiDung, capNhatNguoiDung } from '../../redux/reducers
 import NotFound from '../NotFound';
 import { Tabs } from 'antd';
 import moment from 'moment';
-import { EditOutlined, SaveOutlined } from '@ant-design/icons';
+import { CloseOutlined, EditOutlined, SaveOutlined, UploadOutlined } from '@ant-design/icons';
 import ThongTinBooking from './BookingInfo';
 import FriendInfo from './FriendInfo';
+import UserAvatar from '../../components/UserAvatar';
+import { UploadImage } from '../../services/UploadService';
+import { SwalConfig } from '../../utils/config';
+
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 
 const ThongTinNguoiDung = ({ thongTinNguoiDung }) => {
     const [isEditing, setIsEditing] = useState({
@@ -30,6 +35,9 @@ const ThongTinNguoiDung = ({ thongTinNguoiDung }) => {
     });
 
     const [avatarUrl, setAvatarUrl] = useState('');
+    const [avatarFile, setAvatarFile] = useState(null);
+    const [avatarPreview, setAvatarPreview] = useState('');
+    const [avatarUploading, setAvatarUploading] = useState(false);
     const dispatch = useDispatch();
 
     const refs = {
@@ -52,28 +60,67 @@ const ThongTinNguoiDung = ({ thongTinNguoiDung }) => {
         }));
     };
 
-    const handleAvatarChange = (e) => {
-        setAvatarUrl(e.target.value);
+    const handleAvatarFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            SwalConfig('Vui lòng chọn file ảnh', 'error', true, 2500);
+            e.target.value = '';
+            return;
+        }
+
+        if (file.size > MAX_AVATAR_SIZE) {
+            SwalConfig('Ảnh đại diện không được vượt quá 5MB', 'error', true, 2500);
+            e.target.value = '';
+            return;
+        }
+
+        setAvatarFile(file);
+        setAvatarPreview(URL.createObjectURL(file));
     };
 
-    const handleSave = () => {
-        const updatedData = {
-            ...editData,
-            avatar: avatarUrl || thongTinNguoiDung?.avatar,
-            id: thongTinNguoiDung?.id,
-        };
-        dispatch(capNhatNguoiDung(updatedData));
-        setIsEditing({
-            firstName: false,
-            lastName: false,
-            username: false,
-            email: false,
-            phoneNumber: false,
-            gender: false,
-            dateOfBirth: false,
-            avatar: false,
-            name: false,
-        });
+    const handleCancelAvatarEdit = () => {
+        setAvatarFile(null);
+        setAvatarPreview('');
+        setIsEditing(prev => ({ ...prev, avatar: false }));
+    };
+
+    const handleSave = async () => {
+        let nextAvatarUrl = avatarUrl;
+
+        try {
+            if (isEditing.avatar && avatarFile) {
+                setAvatarUploading(true);
+                const uploadResult = await UploadImage(avatarFile, 'cinemaweb/avatar');
+                nextAvatarUrl = uploadResult.data.body.url;
+            }
+
+            const updatedData = {
+                ...editData,
+                avatar: nextAvatarUrl || thongTinNguoiDung?.avatar,
+                id: thongTinNguoiDung?.id,
+            };
+            await dispatch(capNhatNguoiDung(updatedData));
+            setAvatarUrl(nextAvatarUrl || '');
+            setAvatarFile(null);
+            setAvatarPreview('');
+            setIsEditing({
+                firstName: false,
+                lastName: false,
+                username: false,
+                email: false,
+                phoneNumber: false,
+                gender: false,
+                dateOfBirth: false,
+                avatar: false,
+                name: false,
+            });
+        } catch (error) {
+            SwalConfig(error?.response?.data?.message || 'Không thể tải ảnh đại diện', 'error', true, 3000);
+        } finally {
+            setAvatarUploading(false);
+        }
     };
 
     const handleEdit = (field) => {
@@ -101,8 +148,18 @@ const ThongTinNguoiDung = ({ thongTinNguoiDung }) => {
                 dateOfBirth: thongTinNguoiDung.dateOfBirth || '',
             });
             setAvatarUrl(thongTinNguoiDung.avatar || '');
+            setAvatarFile(null);
+            setAvatarPreview('');
         }
     }, [thongTinNguoiDung]);
+
+    useEffect(() => {
+        return () => {
+            if (avatarPreview) {
+                URL.revokeObjectURL(avatarPreview);
+            }
+        };
+    }, [avatarPreview]);
 
     useEffect(() => {
         const handleClickOutside = (e) => {
@@ -121,6 +178,10 @@ const ThongTinNguoiDung = ({ thongTinNguoiDung }) => {
                             !refs[field].current.contains(e.target) &&
                             !(refs.save?.current?.contains(e.target))
                         ) {
+                            if (field === "avatar") {
+                                setAvatarFile(null);
+                                setAvatarPreview('');
+                            }
                             setIsEditing(prev => ({ ...prev, [field]: false }));
                         }
                     }
@@ -130,6 +191,8 @@ const ThongTinNguoiDung = ({ thongTinNguoiDung }) => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isEditing, refs]);
+
+    const displayAvatar = isEditing.avatar && avatarPreview ? avatarPreview : avatarUrl;
 
     return (
         <div className="profile-page theme-purple min-h-screen py-[6rem]">
@@ -155,25 +218,58 @@ const ThongTinNguoiDung = ({ thongTinNguoiDung }) => {
                     <div
                         className="content__avatar"
                         onClick={() => handleEdit('avatar')}
-                        style={{
-                            backgroundImage: `url(${avatarUrl || "default-avatar-url"})`,
-                            cursor: 'pointer',
-                        }}
+                        style={{ cursor: 'pointer' }}
                         ref={refs.avatar}
                     >
+                        <UserAvatar
+                            avatar={displayAvatar}
+                            firstName={editData.firstName}
+                            lastName={editData.lastName}
+                            username={editData.username}
+                            email={editData.email}
+                            size="100%"
+                            className="w-full h-full"
+                        />
                         {isEditing.avatar && (
-                            <div className="absolute bottom-0 left-0 w-full bg-white p-2 flex items-center gap-2">
-                                <input
-                                    type="text"
-                                    value={avatarUrl}
-                                    onChange={handleAvatarChange}
-                                    placeholder="Nhập URL avatar"
-                                    className="flex-1 border border-gray-300 p-1"
-                                    ref={refs.avatar}
-                                />
-                                <button ref={refs.save} onClick={handleSave} className="text-green-500">
-                                    <SaveOutlined />
-                                </button>
+                            <div
+                                className="absolute left-1/2 top-[calc(100%+12px)] z-20 w-[260px] -translate-x-1/2 rounded-lg border border-gray-200 bg-white p-3 shadow-xl"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-orange-400 px-3 py-2 text-sm font-semibold text-orange-500 hover:bg-orange-50">
+                                    <UploadOutlined />
+                                    Chọn ảnh
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleAvatarFileChange}
+                                        className="hidden"
+                                    />
+                                </label>
+                                {avatarFile && (
+                                    <p className="mt-2 truncate text-center text-xs text-gray-500">
+                                        {avatarFile.name}
+                                    </p>
+                                )}
+                                <div className="mt-3 flex items-center justify-center gap-3">
+                                    <button
+                                        ref={refs.save}
+                                        type="button"
+                                        onClick={handleSave}
+                                        disabled={!avatarFile || avatarUploading}
+                                        className="text-green-500 disabled:cursor-not-allowed disabled:text-gray-300"
+                                        title="Lưu ảnh đại diện"
+                                    >
+                                        <SaveOutlined />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleCancelAvatarEdit}
+                                        className="text-gray-500 hover:text-red-500"
+                                        title="Hủy"
+                                    >
+                                        <CloseOutlined />
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>

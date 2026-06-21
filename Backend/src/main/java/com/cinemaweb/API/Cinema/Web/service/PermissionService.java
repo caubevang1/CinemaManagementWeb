@@ -5,12 +5,15 @@ import com.cinemaweb.API.Cinema.Web.dto.response.PermissionResponse;
 import com.cinemaweb.API.Cinema.Web.entity.Permission;
 import com.cinemaweb.API.Cinema.Web.exception.AppException;
 import com.cinemaweb.API.Cinema.Web.exception.ErrorCode;
+import com.cinemaweb.API.Cinema.Web.configuration.CacheConfig;
 import com.cinemaweb.API.Cinema.Web.mapper.PermissionMapper;
 import com.cinemaweb.API.Cinema.Web.repository.PermissionRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,6 +26,7 @@ public class PermissionService {
     PermissionRepository permissionRepository;
     PermissionMapper permissionMapper;
 
+    @CacheEvict(value = CacheConfig.PERMISSIONS, allEntries = true)
     public PermissionResponse create(PermissionRequest request) {
         if (permissionRepository.existsById(request.getName()))
             throw new AppException(ErrorCode.PERMISSION_EXISTED);
@@ -31,20 +35,24 @@ public class PermissionService {
         return permissionMapper.toPermissionResponse(permission);
     }
 
+    @Cacheable(value = CacheConfig.PERMISSIONS, key = "#permissionName")
     public PermissionResponse get(String permissionName) {
         return permissionMapper.toPermissionResponse(permissionRepository.findById(permissionName)
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_PERMISSION)));
     }
 
+    @Cacheable(value = CacheConfig.PERMISSIONS, key = "'all'")
     public List<PermissionResponse> getAll() {
         List<Permission> permissions = permissionRepository.findAll();
         return permissions.stream().map(permissionMapper::toPermissionResponse).toList();
     }
 
+    @CacheEvict(value = CacheConfig.PERMISSIONS, allEntries = true)
     public void delete(String permissionName) {
         permissionRepository.deleteById(permissionName);
     }
 
+    @CacheEvict(value = CacheConfig.PERMISSIONS, allEntries = true)
     public void deleteAll() {
         permissionRepository.deleteAll();
     }

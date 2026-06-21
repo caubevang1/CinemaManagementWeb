@@ -43,6 +43,6 @@ public class UserCreationRequest {
     String phoneNumber;
     @NotNull(message = "GENDER_NULL")
     Integer gender;
-    String avatar = "default avatar";
+    String avatar;
 
 }

@@ -22,4 +22,11 @@ public interface FriendshipRepository extends JpaRepository<Friendship, Integer>
             "AND (f.requester.ID = :userId OR f.addressee.ID = :userId)")
     List<Friendship> findAllAcceptedOf(@Param("userId") String userId,
                                        @Param("status") FriendshipStatus status);
+
+    // Hai người đã là bạn bè (ACCEPTED), bất kể chiều gửi lời mời.
+    @Query("SELECT COUNT(f) > 0 FROM Friendship f WHERE f.status = " +
+            "com.cinemaweb.API.Cinema.Web.enums.FriendshipStatus.ACCEPTED " +
+            "AND ((f.requester.ID = :a AND f.addressee.ID = :b) " +
+            "OR (f.requester.ID = :b AND f.addressee.ID = :a))")
+    boolean existsAcceptedBetween(@Param("a") String a, @Param("b") String b);
 }

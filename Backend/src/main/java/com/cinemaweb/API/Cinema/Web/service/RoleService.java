@@ -5,6 +5,7 @@ import com.cinemaweb.API.Cinema.Web.dto.response.RoleResponse;
 import com.cinemaweb.API.Cinema.Web.entity.Role;
 import com.cinemaweb.API.Cinema.Web.exception.AppException;
 import com.cinemaweb.API.Cinema.Web.exception.ErrorCode;
+import com.cinemaweb.API.Cinema.Web.configuration.CacheConfig;
 import com.cinemaweb.API.Cinema.Web.mapper.RoleMapper;
 import com.cinemaweb.API.Cinema.Web.repository.PermissionRepository;
 import com.cinemaweb.API.Cinema.Web.repository.RoleRepository;
@@ -12,6 +13,8 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
@@ -26,6 +29,7 @@ public class RoleService {
     RoleMapper roleMapper;
     PermissionRepository permissionRepository;
 
+    @CacheEvict(value = CacheConfig.ROLES, allEntries = true)
     public RoleResponse create(RoleRequest request) {
         if (roleRepository.existsByName(request.getName()))
             throw new AppException(ErrorCode.ROLE_EXISTED);
@@ -37,20 +41,24 @@ public class RoleService {
 
     }
 
+    @Cacheable(value = CacheConfig.ROLES, key = "#name")
     public RoleResponse get(String name) {
         return roleMapper.toRoleResponse(roleRepository.findById(name)
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_ROLE)));
     }
 
+    @Cacheable(value = CacheConfig.ROLES, key = "'all'")
     public List<RoleResponse> getAll() {
         List<Role> roles = roleRepository.findAll();
         return roles.stream().map(roleMapper::toRoleResponse).toList();
     }
 
+    @CacheEvict(value = CacheConfig.ROLES, allEntries = true)
     public void delete(String name) {
         roleRepository.deleteById(name);
     }
 
+    @CacheEvict(value = CacheConfig.ROLES, allEntries = true)
     public void deleteAll() {
         roleRepository.deleteAll();
     }

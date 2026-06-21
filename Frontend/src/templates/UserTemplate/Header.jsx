@@ -6,22 +6,21 @@ import { faCircleUser, faXmark, faArrowRightFromBracket, faUser } from '@fortawe
 import { Drawer, Space, Tooltip, Dropdown, Menu } from 'antd';
 import { getLocalStorage, removeLocalStorage, SwalConfig } from '../../utils/config';
 import { useDispatch, useSelector } from 'react-redux';
-import { setStatusLogin } from '../../redux/reducers/UserReducer';
+import { callApiThongTinNguoiDung, setStatusLogin } from '../../redux/reducers/UserReducer';
 import { LOCALSTORAGE_USER } from '../../utils/constant';
 import popcornImg from '../../assets/img/popcorn2.png';
-import { LayThongTinTaiKhoan } from '../../services/UserService';
+import UserAvatar from '../../components/UserAvatar';
 
 const Header = () => {
     const navBarRef = useRef(null);
-    const isLogin = useSelector(state => state.UserReducer.isLogin);
+    const { isLogin, thongTinNguoiDung } = useSelector(state => state.UserReducer);
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
-    const [accountInfo, setAccountInfo] = useState(null);
     const user = getLocalStorage(LOCALSTORAGE_USER);
 
     useEffect(() => {
-        if (user) {
+        if (user?.accessToken) {
             dispatch(setStatusLogin(true));
         }
 
@@ -41,15 +40,13 @@ const Header = () => {
         return () => {
             document.removeEventListener('scroll', handleScroll);
         };
-    }, [dispatch, user]);
+    }, [dispatch, user?.accessToken]);
 
     useEffect(() => {
         if (isLogin) {
-            LayThongTinTaiKhoan()
-                .then(res => setAccountInfo(res.data.body))
-                .catch(err => console.error("Lỗi lấy thông tin tài khoản:", err));
+            dispatch(callApiThongTinNguoiDung);
         }
-    }, [isLogin]);
+    }, [dispatch, isLogin]);
 
     const handleLogout = () => {
         Swal.fire({
@@ -70,9 +67,7 @@ const Header = () => {
         });
     };
 
-    const UserProfile = ({ user, accountInfo }) => {
-        const avatarUrl = accountInfo?.body?.avatar || `https://i.pravatar.cc/150?u=${user?.username}`;
-
+    const UserProfile = ({ user, userInfo }) => {
         const menu = (
             <Menu>
                 <Menu.Item key="1" icon={<FontAwesomeIcon icon={faUser} />} onClick={() => navigate('/inforUser')}>
@@ -87,13 +82,15 @@ const Header = () => {
         return (
             <Dropdown overlay={menu} placement="bottom" arrow>
                 <div className="cursor-pointer flex items-center space-x-2">
-                    <div className="relative bg-transparent rounded-full overflow-hidden w-[60px] h-[60px] mr-[40px]">
-                        <img
-                            src={avatarUrl}
-                            alt="User Avatar"
-                            className="w-full h-full object-cover object-center" // Sử dụng object-cover và object-center để crop ảnh
-                        />
-                    </div>
+                    <UserAvatar
+                        avatar={userInfo?.avatar}
+                        firstName={userInfo?.firstName}
+                        lastName={userInfo?.lastName}
+                        username={userInfo?.username || user?.username}
+                        email={userInfo?.email}
+                        size={60}
+                        className="mr-[40px]"
+                    />
                 </div>
             </Dropdown>
         );
@@ -121,7 +118,7 @@ const Header = () => {
                 <div>
                     {isLogin ? (
                         <>
-                            <UserProfile user={user} accountInfo={accountInfo} />
+                            <UserProfile user={user} userInfo={thongTinNguoiDung} />
                         </>
                     ) : (
                         <>
@@ -180,7 +177,7 @@ const Header = () => {
                         </ul>
                         <div className='flex text-gray-500'>
                             {isLogin ? (
-                                <UserProfile user={user} accountInfo={accountInfo} />
+                                <UserProfile user={user} userInfo={thongTinNguoiDung} />
                             ) : (
                                 <>
                                     <NavLink to='login' className='mr-2 text-gray-500 hover:text-red-600 text-sm font-semibold border-orange-500 border-2 py-2 px-3 rounded-lg'>Đăng Nhập</NavLink>

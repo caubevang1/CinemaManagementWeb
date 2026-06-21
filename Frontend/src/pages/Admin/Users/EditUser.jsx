@@ -1,21 +1,61 @@
 import { Input, Form, DatePicker, Radio, Select } from 'antd';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { CloseOutlined, UploadOutlined } from '@ant-design/icons';
 import { useFormik } from 'formik';
 import { useDispatch, useSelector } from 'react-redux';
 import useRoute from '../../../hooks/useRoute';
 import { callApiThongTinNguoiDungEdit, capNhatNguoiDung, layDanhSachLoaiNguoiDung } from '../../../redux/reducers/UserReducer';
 import { SwalConfig } from '../../../utils/config';
 import dayjs from 'dayjs';
+import UserAvatar from '../../../components/UserAvatar';
+import { UploadImage } from '../../../services/UploadService';
+
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 
 export default () => {
     const { thongTinNguoiDungEdit, danhSachLoaiNguoiDung } = useSelector(state => state.UserReducer);
     const dispatch = useDispatch();
     const { param } = useRoute();
+    const [avatarFile, setAvatarFile] = useState(null);
+    const [avatarPreview, setAvatarPreview] = useState('');
 
     useEffect(() => {
         dispatch(callApiThongTinNguoiDungEdit(param));
         dispatch(layDanhSachLoaiNguoiDung);
     }, []);
+
+    useEffect(() => {
+        return () => {
+            if (avatarPreview) {
+                URL.revokeObjectURL(avatarPreview);
+            }
+        };
+    }, [avatarPreview]);
+
+    const handleAvatarFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            SwalConfig('Vui lòng chọn file ảnh', 'error', true, 2500);
+            e.target.value = '';
+            return;
+        }
+
+        if (file.size > MAX_AVATAR_SIZE) {
+            SwalConfig('Ảnh đại diện không được vượt quá 5MB', 'error', true, 2500);
+            e.target.value = '';
+            return;
+        }
+
+        setAvatarFile(file);
+        setAvatarPreview(URL.createObjectURL(file));
+    };
+
+    const clearAvatarFile = () => {
+        setAvatarFile(null);
+        setAvatarPreview('');
+    };
 
     const formik = useFormik({
         enableReinitialize: true,
@@ -32,21 +72,37 @@ export default () => {
             avatar: thongTinNguoiDungEdit.avatar || '',
             roles: thongTinNguoiDungEdit.roles?.map(role => role.name) || []
         },
-        onSubmit: (values) => {
-            const payload = {
-                ...values,
-                roles: Array.isArray(values.roles) ? values.roles : [values.roles]
-            };
-
-            if (!values.password) {
-                delete payload.password; // nếu để trống thì xóa khỏi payload
+        onSubmit: async (values, { setSubmitting }) => {
+            const { username, firstName, lastName, email, phoneNumber } = values;
+            if (!username || !firstName || !lastName || !email || !phoneNumber) {
+                SwalConfig('Vui lòng điền đầy đủ thông tin', 'error', true);
+                setSubmitting(false);
+                return;
             }
 
-            const { username, firstName, lastName, email, phoneNumber } = values;
-            if (username && firstName && lastName && email && phoneNumber) {
-                dispatch(capNhatNguoiDung(payload));
-            } else {
-                SwalConfig('Vui lòng điền đầy đủ thông tin', 'error', true);
+            try {
+                let avatar = values.avatar;
+                if (avatarFile) {
+                    const uploadResult = await UploadImage(avatarFile, 'cinemaweb/avatar');
+                    avatar = uploadResult.data.body.url;
+                }
+
+                const payload = {
+                    ...values,
+                    avatar,
+                    roles: Array.isArray(values.roles) ? values.roles : [values.roles]
+                };
+
+                if (!values.password) {
+                    delete payload.password; // nếu để trống thì xóa khỏi payload
+                }
+
+                await dispatch(capNhatNguoiDung(payload));
+                clearAvatarFile();
+            } catch (error) {
+                SwalConfig(error?.response?.data?.message || 'Không thể tải ảnh đại diện', 'error', true, 3000);
+            } finally {
+                setSubmitting(false);
             }
         }
     });
@@ -101,12 +157,43 @@ export default () => {
                     </Radio.Group>
                 </Form.Item>
                 <Form.Item label="Avatar">
-                    <Input
-                        name='avatar'
-                        onChange={formik.handleChange}
-                        value={formik.values.avatar}
-                        placeholder="URL ảnh đại diện"
-                    />
+                    <div className="flex items-center gap-4">
+                        <UserAvatar
+                            avatar={avatarPreview || formik.values.avatar}
+                            firstName={formik.values.firstName}
+                            lastName={formik.values.lastName}
+                            username={formik.values.username}
+                            email={formik.values.email}
+                            size={80}
+                        />
+                        <div className="flex items-center gap-2">
+                            <label className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-orange-400 px-4 py-2 text-sm font-semibold text-orange-500 hover:bg-orange-50">
+                                <UploadOutlined />
+                                Chọn ảnh
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleAvatarFileChange}
+                                    className="hidden"
+                                />
+                            </label>
+                            {avatarFile && (
+                                <button
+                                    type="button"
+                                    onClick={clearAvatarFile}
+                                    className="text-gray-500 hover:text-red-500"
+                                    title="Hủy ảnh mới"
+                                >
+                                    <CloseOutlined />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    {avatarFile && (
+                        <p className="mt-2 max-w-[280px] truncate text-xs text-gray-500">
+                            {avatarFile.name}
+                        </p>
+                    )}
                 </Form.Item>
                 <Form.Item label="Loại người dùng">
                     <Select
@@ -123,6 +210,7 @@ export default () => {
                 <Form.Item label="Tác vụ">
                     <button
                         type='submit'
+                        disabled={formik.isSubmitting}
                         className='border-2 border-orange-300 px-4 py-2 rounded-md hover:border-orange-500'
                     >
                         Cập nhật người dùng

@@ -109,14 +109,11 @@ public class BookingService {
 
     @Transactional
     public void createBooking(BookingRequest bookingRequest) {
-        Booking booking = bookingMapper.toCreationBooking(bookingRequest);
         var context = SecurityContextHolder.getContext();
         String id = context.getAuthentication().getName();
         User user = userRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTS));
-        booking.setUser(user);
-        bookingRepository.save(booking);
-        // Tinh tien seat
 
+        // ── 1) Tính tiền ghế (kèm khóa bi quan + validate trạng thái) ──
         BigDecimal seatPrice = BigDecimal.ZERO;
         List<BookingSeatRequest> bookingSeats = bookingRequest.getSeats();
         List<Integer> seatScheduleIds = bookingSeats.stream()
@@ -130,7 +127,6 @@ public class BookingService {
         }
 
         LocalDateTime now = LocalDateTime.now();
-        List<BookingSeat> bookingSeatEntities = new ArrayList<>();
         for (SeatSchedule seatSchedule : seatSchedules) {
             // Chỉ đặt được khi ghế đang trống, hoặc đang được CHÍNH user này giữ và chưa hết hạn.
             boolean heldByMe = seatSchedule.getSeatState() == SeatState.HELD
@@ -149,7 +145,38 @@ public class BookingService {
             seatSchedule.setHeldUntil(null);
             seatSchedule.setHeldBy(null);
             seatPrice = seatPrice.add(seatSchedule.getPrice());
+        }
 
+        // ── 2) Tính tiền đồ ăn (dựng sẵn entity, chưa gắn booking) ──
+        BigDecimal foodAndDrinksPrice = BigDecimal.ZERO;
+        List<BookingFoodAndDrink> bookingFoodAndDrinkEntities = new ArrayList<>();
+        if (bookingRequest.getFoodAndDrinks() != null) {
+            for (BookingFoodAndDrinkRequest fdRequest : bookingRequest.getFoodAndDrinks()) {
+                FoodAndDrink foodAndDrink = foodAndDrinkRepository
+                        .findById(String.valueOf(fdRequest.getFoodAndDrinkId()))
+                        .orElseThrow(() -> new RuntimeException("F&D id is not found"));
+                BigDecimal lineTotal = foodAndDrink.getFoodAndDrinkPrice()
+                        .multiply(BigDecimal.valueOf(fdRequest.getQuantity()));
+                foodAndDrinksPrice = foodAndDrinksPrice.add(lineTotal);
+
+                bookingFoodAndDrinkEntities.add(BookingFoodAndDrink.builder()
+                        .foodAndDrink(foodAndDrink)
+                        .quantity(fdRequest.getQuantity())
+                        .price(lineTotal)
+                        .build());
+            }
+        }
+
+        // ── 3) Tạo Booking với price chuẩn ngay từ đầu, lưu đúng 1 lần ──
+        BigDecimal totalPrice = seatPrice.add(foodAndDrinksPrice);
+        Booking booking = bookingMapper.toCreationBooking(bookingRequest);
+        booking.setUser(user);
+        booking.setPrice(totalPrice);
+        bookingRepository.save(booking);
+
+        // ── 4) Gắn booking vào các bảng con rồi lưu ──
+        List<BookingSeat> bookingSeatEntities = new ArrayList<>();
+        for (SeatSchedule seatSchedule : seatSchedules) {
             bookingSeatEntities.add(BookingSeat.builder()
                     .booking(booking)
                     .seatSchedule(seatSchedule)
@@ -166,31 +193,9 @@ public class BookingService {
         }
         seatScheduleRepository.saveAll(seatSchedules);
 
-        BigDecimal foodAndDrinksPrice = BigDecimal.ZERO;
-        if(bookingRequest.getFoodAndDrinks() != null) {
-            List<BookingFoodAndDrinkRequest> listBookingFoodAndDrink =
-                    bookingRequest.getFoodAndDrinks();
-
-            for (int i = 0; i < listBookingFoodAndDrink.size(); i++ ) {
-                FoodAndDrink foodAndDrink = foodAndDrinkRepository
-                        .findById(String.valueOf(listBookingFoodAndDrink.get(i).getFoodAndDrinkId()))
-                        .orElseThrow(() -> new RuntimeException("F&D id is not found"));
-                BigDecimal lineTotal = foodAndDrink.getFoodAndDrinkPrice()
-                        .multiply(BigDecimal.valueOf(listBookingFoodAndDrink.get(i).getQuantity()));
-                foodAndDrinksPrice = foodAndDrinksPrice.add(lineTotal);
-
-                BookingFoodAndDrink bookingFoodAndDrink = BookingFoodAndDrink.builder()
-                        .foodAndDrink(foodAndDrink)
-                        .booking(booking)
-                        .quantity(listBookingFoodAndDrink.get(i).getQuantity())
-                        .price(lineTotal)
-                        .build();
-
-                bookingFoodAndDrinkRepository.save(bookingFoodAndDrink);
-            }
+        for (BookingFoodAndDrink bookingFoodAndDrink : bookingFoodAndDrinkEntities) {
+            bookingFoodAndDrink.setBooking(booking);
+            bookingFoodAndDrinkRepository.save(bookingFoodAndDrink);
         }
-
-        booking.setPrice(seatPrice.add(foodAndDrinksPrice));
-        bookingRepository.save(booking);
     }
 }

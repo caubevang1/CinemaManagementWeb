@@ -5,11 +5,15 @@ import com.cinemaweb.API.Cinema.Web.dto.response.RoomResponse;
 import com.cinemaweb.API.Cinema.Web.entity.Cinema;
 import com.cinemaweb.API.Cinema.Web.entity.Room;
 import com.cinemaweb.API.Cinema.Web.entity.Seat;
+import com.cinemaweb.API.Cinema.Web.configuration.CacheConfig;
 import com.cinemaweb.API.Cinema.Web.mapper.RoomMapper;
 import com.cinemaweb.API.Cinema.Web.repository.CinemaRepository;
 import com.cinemaweb.API.Cinema.Web.repository.RoomRepository;
 import com.cinemaweb.API.Cinema.Web.repository.SeatRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -30,15 +34,21 @@ public class RoomService {
     @Autowired
     private SeatRepository seatRepository;
 
+    @Cacheable(value = CacheConfig.ROOMS)
     public List<RoomResponse> getAllRooms() {
         return roomMapper.toRoomResponseList(roomRepository.findAll());
     }
 
+    @Cacheable(value = CacheConfig.ROOM, key = "#id")
     public RoomResponse getRoom(String id) {
         return roomMapper.toRoomResponse(roomRepository.findById(id).orElseThrow(()
                 -> new RuntimeException("Room id not found")));
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = CacheConfig.ROOMS, allEntries = true),
+            @CacheEvict(value = CacheConfig.ROOM, allEntries = true)
+    })
     public void createRoom(RoomRequest roomCreateRequest) {
         List<Seat> seats = new ArrayList<>();
         int numRows = roomCreateRequest.getNumRow();
@@ -75,6 +85,10 @@ public class RoomService {
         seatRepository.saveAll(seats);
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = CacheConfig.ROOMS, allEntries = true),
+            @CacheEvict(value = CacheConfig.ROOM, key = "#roomId")
+    })
     public void updateRoom(String roomId,RoomRequest roomUpdateRequest) {
         Room room = roomRepository.findById(roomId).orElseThrow(()
                 -> new RuntimeException("Room id is not found!"));
@@ -89,6 +103,10 @@ public class RoomService {
         roomRepository.save(room);
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = CacheConfig.ROOMS, allEntries = true),
+            @CacheEvict(value = CacheConfig.ROOM, key = "#roomId")
+    })
     public void deleteRoom(String roomId) {
         Room room = roomRepository.findById(roomId).orElseThrow(()
                 -> new RuntimeException("Room id is not found"));

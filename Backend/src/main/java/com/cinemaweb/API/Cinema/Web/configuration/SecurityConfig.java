@@ -87,6 +87,10 @@ public class SecurityConfig {
         httpSecurity.authorizeHttpRequests(request -> request
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(SWAGGER_ENDPOINTS).permitAll()
+                // DEV ONLY: mở actuator để xem cache metrics; production nên giới hạn lại
+                .requestMatchers("/actuator/**").permitAll()
+                // Handshake WebSocket; xác thực JWT thực hiện ở STOMP CONNECT (StompAuthChannelInterceptor)
+                .requestMatchers("/ws/**").permitAll()
                 .requestMatchers(HttpMethod.GET, PUBLIC_ENDPOINTS_GET).permitAll()
                 .requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
                 .anyRequest().authenticated()

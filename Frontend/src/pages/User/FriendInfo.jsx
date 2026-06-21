@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Tabs, Avatar, Badge } from 'antd';
-import { UserOutlined, SearchOutlined } from '@ant-design/icons';
+import { useDispatch } from 'react-redux';
+import { Tabs, Badge } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
+import { openWindow } from '../../redux/reducers/ChatReducer';
 import {
     LayDanhSachBanBe,
     LayLoiMoiKetBan,
@@ -11,8 +13,10 @@ import {
 } from '../../services/FriendService';
 import { TimKiemNguoiDung } from '../../services/UserService';
 import { SwalConfig, confirmSwal } from '../../utils/config';
+import UserAvatar from '../../components/UserAvatar';
 
 const FriendInfo = () => {
+    const dispatch = useDispatch();
     const [friends, setFriends] = useState([]);
     const [requests, setRequests] = useState([]);
     const [keyword, setKeyword] = useState('');
@@ -98,7 +102,7 @@ const FriendInfo = () => {
 
     const Row = ({ avatar, title, subtitle, actions }) => (
         <div className="flex items-center gap-3 p-3 border-b border-gray-100 hover:bg-gray-50 rounded-lg">
-            <Avatar size={48} src={avatar || undefined} icon={<UserOutlined />} />
+            <UserAvatar size={48} avatar={avatar} name={title} />
             <div className="flex-1 min-w-0">
                 <p className="font-semibold text-gray-800 truncate">{title}</p>
                 {subtitle && <p className="text-gray-500 text-sm truncate">{subtitle}</p>}
@@ -183,7 +187,16 @@ const FriendInfo = () => {
                         key={f.friendshipId}
                         avatar={f.otherAvatar}
                         title={f.otherUsername}
-                        actions={btn('Hủy kết bạn', () => handleUnfriend(f.friendshipId), 'bg-red-500 hover:bg-red-600')}
+                        actions={
+                            <>
+                                {btn('Nhắn tin', () => dispatch(openWindow({
+                                    userId: f.otherUserId,
+                                    username: f.otherUsername,
+                                    avatar: f.otherAvatar,
+                                })), 'bg-orange-500 hover:bg-orange-600')}
+                                {btn('Hủy kết bạn', () => handleUnfriend(f.friendshipId), 'bg-red-500 hover:bg-red-600')}
+                            </>
+                        }
                     />
                 ))
             )}

@@ -25,23 +25,30 @@ export default function Showtime() {
             scheduleDate: '',
             scheduleStart: '',
             scheduleEnd: '',
+            format: '2D',
+            audioType: 'SUBTITLE',
         },
 
         onSubmit: async (values) => {
             try {
-                const start = dayjs(values.scheduleStart);
+                // Gộp ngày + giờ thành DATETIME; end tự cuộn sang ngày sau nếu qua nửa đêm.
+                const datePart = dayjs(values.scheduleDate);
+                const timePart = dayjs(values.scheduleStart);
+                const start = datePart
+                    .hour(timePart.hour())
+                    .minute(timePart.minute())
+                    .second(0);
                 const end = start.add(movieLength + 10, 'minute');
-                const roundedEnd = end.minute(Math.round(end.minute() / 5) * 5);
+                const roundedEnd = end.minute(Math.round(end.minute() / 5) * 5).second(0);
 
                 const requestData = {
                     movieId: values.movieId,
                     roomId: values.roomId,
-                    cinemaId: values.cinemaId,
-                    scheduleDate: dayjs(values.scheduleDate).format('YYYY-MM-DD'),
-                    scheduleStart: dayjs.isDayjs(values.scheduleStart)
-                        ? values.scheduleStart.format('HH:mm:ss')
-                        : '00:00:00',
-                    scheduleEnd: roundedEnd.format('HH:mm:ss'),
+                    // cinemaId không gửi nữa — rạp suy ra từ phòng ở backend.
+                    scheduleStart: start.format('YYYY-MM-DDTHH:mm:ss'),
+                    scheduleEnd: roundedEnd.format('YYYY-MM-DDTHH:mm:ss'),
+                    format: values.format,
+                    audioType: values.audioType,
                 };
 
                 const result = await TaoLichChieu(requestData);
@@ -195,6 +202,29 @@ export default function Showtime() {
                         onChange={(value) => formik.setFieldValue('scheduleEnd', value)}
                         placeholder="Giờ kết thúc sẽ tự động tính toán"
                         disabled
+                    />
+                </Form.Item>
+
+                <Form.Item label="Định dạng">
+                    <Select
+                        value={formik.values.format}
+                        options={[
+                            { label: '2D', value: '2D' },
+                            { label: '3D', value: '3D' },
+                            { label: 'IMAX', value: 'IMAX' },
+                        ]}
+                        onChange={(value) => formik.setFieldValue('format', value)}
+                    />
+                </Form.Item>
+
+                <Form.Item label="Âm thanh">
+                    <Select
+                        value={formik.values.audioType}
+                        options={[
+                            { label: 'Phụ đề', value: 'SUBTITLE' },
+                            { label: 'Lồng tiếng', value: 'DUB' },
+                        ]}
+                        onChange={(value) => formik.setFieldValue('audioType', value)}
                     />
                 </Form.Item>
 

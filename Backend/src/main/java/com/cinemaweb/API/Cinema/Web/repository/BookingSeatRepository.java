@@ -15,4 +15,7 @@ public interface BookingSeatRepository extends JpaRepository<BookingSeat, Intege
     //      khi gọi không cần check exsist
     //      --> chỉ cần BookingSeatRepository.find____().orElseThrow(()-> exception)
     public Optional<List<BookingSeat>> findAllByBooking_BookingId(int bookingId);
+
+    // Batch load cho nhiều booking (tránh N+1 trong getAllMyBooking)
+    List<BookingSeat> findAllByBooking_BookingIdIn(List<Integer> bookingIds);
 }

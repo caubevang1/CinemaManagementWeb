@@ -11,6 +11,7 @@ import { LayThongTinLichChieuChiTiet, LayThongTinLichChieu } from '../../service
 import { layThongTinCumRap } from '../../services/CinemaService';
 import { layThongTinPhong } from '../../services/CinemaService';
 import ShowtimeDetail from '../../components/Detail/ShowtimeDetail';
+import CommentSection from '../../components/Detail/CommentSection';
 import { LayThongTinPhimChiTiet } from '../../services/FilmService';
 
 export default function Detail() {
@@ -74,6 +75,7 @@ export default function Detail() {
             {isLoadingDetail ? (
                 <LoadingPage />
             ) : (
+                <>
                 <div className="relative film-detail">
                     <img
                         src={filmDetail.moviePoster}
@@ -203,6 +205,8 @@ export default function Detail() {
                         </div>
                     </div>
                 </div>
+                <CommentSection movieId={param.id} />
+                </>
             )}
         </div>
     );

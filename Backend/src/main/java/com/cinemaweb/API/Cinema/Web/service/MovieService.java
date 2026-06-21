@@ -3,6 +3,7 @@ package com.cinemaweb.API.Cinema.Web.service;
 import com.cinemaweb.API.Cinema.Web.dto.request.MovieRequest;
 import com.cinemaweb.API.Cinema.Web.dto.response.MovieResponse;
 import com.cinemaweb.API.Cinema.Web.entity.Movie;
+import com.cinemaweb.API.Cinema.Web.enums.MovieStatus;
 import com.cinemaweb.API.Cinema.Web.exception.AppException;
 import com.cinemaweb.API.Cinema.Web.exception.ErrorCode;
 import com.cinemaweb.API.Cinema.Web.mapper.MovieMapper;
@@ -23,7 +24,13 @@ public class MovieService {
     @Autowired
     MovieMapper movieMapper;
 
+    // Public: chỉ trả phim không bị ENDED (đang chiếu + sắp chiếu).
     public List<MovieResponse> getAllMovies() {
+        return movieMapper.toMovieResponseList(movieRepository.findByStatusNot(MovieStatus.ENDED));
+    }
+
+    // Admin: trả tất cả phim kể cả ENDED để quản lý.
+    public List<MovieResponse> getAllMoviesForAdmin() {
         return movieMapper.toMovieResponseList(movieRepository.findAll());
     }
 
@@ -37,7 +44,11 @@ public class MovieService {
                 movieCreateRequest.getMovieName(), movieCreateRequest.getReleaseDate())) {
             throw new AppException(ErrorCode.MOVIE_EXISTED);
         }
-        movieRepository.save(movieMapper.toMovie(movieCreateRequest));
+        Movie movie = movieMapper.toMovie(movieCreateRequest);
+        if (movie.getStatus() == null) {
+            movie.setStatus(MovieStatus.NOW_SHOWING);
+        }
+        movieRepository.save(movie);
     }
 
     public MovieResponse updateMovie(String movieId, MovieRequest movieUpdateRequest) {

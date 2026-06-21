@@ -6,6 +6,7 @@ import { Tabs } from 'antd';
 import moment from 'moment';
 import { EditOutlined, SaveOutlined } from '@ant-design/icons';
 import ThongTinBooking from './BookingInfo';
+import FriendInfo from './FriendInfo';
 
 const ThongTinNguoiDung = ({ thongTinNguoiDung }) => {
     const [isEditing, setIsEditing] = useState({
@@ -392,6 +393,11 @@ const InforUser = () => {
             label: <span className="text-[15px] sm:text-[20px] font-bold ml-2">Thông tin booking</span>,
             key: 2,
             children: <ThongTinBooking />, // Thêm tab cho thông tin booking
+        },
+        {
+            label: <span className="text-[15px] sm:text-[20px] font-bold ml-2">Bạn bè</span>,
+            key: 3,
+            children: <FriendInfo />,
         },
     ];
 

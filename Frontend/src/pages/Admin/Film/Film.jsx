@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Table, Input, Button, Tooltip } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import { useEffect } from 'react';
-import { callApiFilm, callApiXoaPhim } from '../../../redux/reducers/FilmReducer';
+import { callApiFilmAdmin, callApiXoaPhim } from '../../../redux/reducers/FilmReducer';
 import { NavLink } from 'react-router-dom';
 import { EditOutlined, DeleteOutlined, CalendarOutlined } from '@ant-design/icons';
 import Swal from 'sweetalert2';
@@ -10,13 +10,19 @@ import { debounce } from 'lodash';
 
 const { Search } = Input;
 
+const STATUS_LABEL = {
+    NOW_SHOWING: 'Đang chiếu',
+    COMING_SOON: 'Sắp chiếu',
+    ENDED: 'Ngừng chiếu',
+};
+
 export default function Film() {
     const dispatch = useDispatch();
     const { arrFilm } = useSelector(state => state.FilmReducer);
     const [data, setData] = useState([]);
 
     useEffect(() => {
-        dispatch(callApiFilm);
+        dispatch(callApiFilmAdmin);
     }, [dispatch]);
 
     useEffect(() => {
@@ -86,6 +92,18 @@ export default function Film() {
                 return film.movieDescription.length > 80 ? film.movieDescription.slice(0, 80) + '...' : film.movieDescription;
             },
             sortDirections: ['descend'],
+        },
+        {
+            title: 'Trạng thái',
+            dataIndex: 'status',
+            render: (status) => STATUS_LABEL[status] || status || '—',
+            filters: [
+                { text: 'Đang chiếu', value: 'NOW_SHOWING' },
+                { text: 'Sắp chiếu', value: 'COMING_SOON' },
+                { text: 'Ngừng chiếu', value: 'ENDED' },
+            ],
+            onFilter: (value, film) => film.status === value,
+            width: 130,
         },
         {
             title: 'Hành động',

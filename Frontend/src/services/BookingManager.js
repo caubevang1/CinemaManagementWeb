@@ -13,6 +13,9 @@ export const LayDanhSachGhe = () => http.get(`seats`)
 
 export const LayDanhSachGheSchedule = () => http.get(`seatSchedule`)
 
+// Lấy ghế của riêng một suất chiếu (lọc tại DB thay vì tải toàn bộ rồi lọc ở client)
+export const LayDanhSachGheTheoSuat = (scheduleId) => http.get(`seatSchedule/${scheduleId}`)
+
 export const LayThongTinGheChiTiet = (seatId) => http.get(`seats/${seatId}`)
 
 export const CapNhatGhe = (seatId, data) => http.put(`seats/${seatId}`, data)

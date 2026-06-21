@@ -1,4 +1,4 @@
-import { Form, Input, InputNumber, Tabs, Spin, DatePicker } from 'antd';
+import { Form, Input, InputNumber, Tabs, Spin, DatePicker, Select } from 'antd';
 import { SearchOutlined, FormOutlined, StarFilled, PictureOutlined } from '@ant-design/icons';
 import React, { useState, useMemo, useEffect } from 'react';
 import dayjs from 'dayjs';
@@ -37,6 +37,17 @@ const ManualForm = ({ formik, imgSrc, handleChangeImageURL }) => (
                 format="YYYY-MM-DD"
             />
         </Form.Item>
+        <Form.Item label="Trạng thái">
+            <Select
+                value={formik.values.status}
+                onChange={(value) => formik.setFieldValue('status', value)}
+                options={[
+                    { value: 'NOW_SHOWING', label: 'Đang chiếu' },
+                    { value: 'COMING_SOON', label: 'Sắp chiếu' },
+                    { value: 'ENDED', label: 'Ngừng chiếu' },
+                ]}
+            />
+        </Form.Item>
         <Form.Item label="Trailer (URL)">
             <Input name='trailerUrl' value={formik.values.trailerUrl} onChange={formik.handleChange} placeholder="https://youtube.com/..." />
         </Form.Item>
@@ -72,6 +83,7 @@ export default function AddNewFilm() {
             tmdbId: null,
             trailerUrl: '',
             releaseDate: null,
+            status: 'NOW_SHOWING',
         },
         onSubmit: (value) => {
             const { movieName, movieDescription, movieLength, movieReview, moviePoster, movieGenre, releaseDate } = value;

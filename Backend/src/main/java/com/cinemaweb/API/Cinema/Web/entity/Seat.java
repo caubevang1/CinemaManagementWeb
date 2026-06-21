@@ -6,6 +6,8 @@ import jakarta.validation.constraints.Size;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
+
 import static jakarta.persistence.GenerationType.IDENTITY;
 
 @Entity
@@ -26,5 +28,5 @@ public class Seat {
     String seatType;
     char seatRow;
     int seatNumber;
-    double seatPrice;
+    BigDecimal seatPrice;
 }

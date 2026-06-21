@@ -51,9 +51,6 @@ public class ScheduleService {
     }
 
     public void updateSchedule(String scheduleId, ScheduleRequest scheduleUpdateRequest) {
-        Cinema cinema = cinemaRepository.findById(Integer.toString(scheduleUpdateRequest.getCinemaId()))
-                .orElseThrow(() -> new RuntimeException("Cinema id in updateSchedule is not found!"));
-
         Room room = roomRepository.findById(Integer.toString(scheduleUpdateRequest.getRoomId()))
                 .orElseThrow(() -> new RuntimeException("Room id in updateSchedule is not found!"));
 
@@ -63,7 +60,7 @@ public class ScheduleService {
         Schedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new RuntimeException("Schedule id in updateSchedule is not found!"));
 
-        schedule.setCinema(cinema);
+        // Cinema suy ra từ room — không set trực tiếp nữa.
         schedule.setMovie(movie);
         schedule.setRoom(room);
         scheduleMapper.toUpdateSchedule(schedule,scheduleUpdateRequest);

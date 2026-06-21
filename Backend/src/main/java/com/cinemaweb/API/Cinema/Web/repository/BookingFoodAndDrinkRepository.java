@@ -11,4 +11,7 @@ public interface BookingFoodAndDrinkRepository extends JpaRepository<BookingFood
     List<BookingFoodAndDrink> findByBooking_BookingId(int bookingId);
 
     boolean existsByBooking_BookingId(int bookingId);
+
+    // Batch load cho nhiều booking (tránh N+1 trong getAllMyBooking)
+    List<BookingFoodAndDrink> findByBooking_BookingIdIn(List<Integer> bookingIds);
 }

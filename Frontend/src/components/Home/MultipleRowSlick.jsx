@@ -8,6 +8,10 @@ export default function MultipleRowSlick({ arrFilm }) {
 
     const films = [...arrFilm];
 
+    // rows:2 cần >2 phim mới tạo được nhiều cột nằm ngang; nếu chỉ có ≤2 phim thì
+    // 2 hàng sẽ co thành 1 cột dọc. Hạ về 1 hàng khi ít phim để luôn hiển thị ngang.
+    const rows = films.length > 2 ? 2 : 1;
+
     function SampleNextArrow(props) {
         const { className, style, onClick } = props;
         return (
@@ -37,7 +41,7 @@ export default function MultipleRowSlick({ arrFilm }) {
         centerPadding: "40px",
         slidesToShow: 4,
         speed: 500,
-        rows: 2,
+        rows: rows,
         slidesPerRow: 1,
         slidesToScroll: 1,
         initialSlide: 2,
@@ -48,7 +52,7 @@ export default function MultipleRowSlick({ arrFilm }) {
                 settings: {
                     slidesToShow: 3,
                     centerPadding: "0",
-                    rows: 2,
+                    rows: rows,
                     slidesPerRow: 1,
                 }
             },
@@ -57,7 +61,7 @@ export default function MultipleRowSlick({ arrFilm }) {
                 settings: {
                     slidesToShow: 2,
                     centerPadding: "0",
-                    rows: 2,
+                    rows: rows,
                     slidesPerRow: 1,
                 }
             },

@@ -74,8 +74,8 @@ export default function ShowtimeDetail() {
                                 key: itemLich.key,
                                 label: (
                                     <span>
-                                        {moment(itemLich.scheduleDate).format('DD-MM-YYYY')} -{' '}
-                                        {moment(`${itemLich.scheduleDate} ${itemLich.scheduleStart}`).format('HH:mm')}
+                                        {moment(itemLich.scheduleStart).format('DD-MM-YYYY')} -{' '}
+                                        {moment(itemLich.scheduleStart).format('HH:mm')}
                                     </span>
                                 ),
                                 children: (

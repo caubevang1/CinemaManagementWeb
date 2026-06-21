@@ -135,9 +135,9 @@ export default function BookingTicketNow(props) {
                 <select name='lichChieuDangChon' onChange={handleChange} className='text-black border-2 rounded-md border-slate-600 cursor-pointer 2xl:col-span-2 h-[2.5rem]'>
                     <option value="">Ngày giờ chiếu</option>
                     {state.danhSachDuLieu.lichChieu?.map((item, index) => {
-                        const date = moment(item.scheduleDate).format("DD-MM-YYYY");
-                        const start = moment(item.scheduleStart, "HH:mm:ss").format("hh:mm A");
-                        const end = moment(item.scheduleEnd, "HH:mm:ss").format("hh:mm A");
+                        const date = moment(item.scheduleStart).format("DD-MM-YYYY");
+                        const start = moment(item.scheduleStart).format("hh:mm A");
+                        const end = moment(item.scheduleEnd).format("hh:mm A");
                         return (
                             <option key={index} value={item.scheduleId}>
                                 {`${date} ~ ${start} - ${end}`}

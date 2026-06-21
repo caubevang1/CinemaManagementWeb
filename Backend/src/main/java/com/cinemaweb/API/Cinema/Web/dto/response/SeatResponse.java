@@ -3,6 +3,8 @@ package com.cinemaweb.API.Cinema.Web.dto.response;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -15,5 +17,5 @@ public class SeatResponse {
     String seatType;
     String seatRow;
     int seatNumber;
-    double seatPrice;
+    BigDecimal seatPrice;
 }

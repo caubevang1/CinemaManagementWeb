@@ -27,6 +27,14 @@ public class MovieController {
                 .build();
     }
 
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<List<MovieResponse>> getAllMoviesForAdmin() {
+        return ApiResponse.<List<MovieResponse>>builder()
+                .body(movieService.getAllMoviesForAdmin())
+                .build();
+    }
+
     @GetMapping("/{movieid}")
     public ApiResponse<MovieResponse> getMovie(@PathVariable String movieid) {
         return ApiResponse.<MovieResponse>builder()

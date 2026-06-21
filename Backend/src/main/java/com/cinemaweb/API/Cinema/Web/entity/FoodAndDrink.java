@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
+
 import static jakarta.persistence.GenerationType.IDENTITY;
 
 @Entity
@@ -27,7 +29,7 @@ public class FoodAndDrink {
     Cinema cinema;
 
     @Column(name = "fd_price")
-    double foodAndDrinkPrice;
+    BigDecimal foodAndDrinkPrice;
 
     @Column(name = "image_food_and_drink")
     String imageFoodAndDrink;

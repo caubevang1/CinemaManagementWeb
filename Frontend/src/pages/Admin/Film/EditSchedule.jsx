@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Button, DatePicker, TimePicker, Select, Spin, message } from 'antd';
+import { Form, Input, Button, DatePicker, Select, Spin, message } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -32,19 +32,23 @@ export default function EditSchedule() {
                 movieId: found.movieId,
                 cinemaId: found.cinemaId,
                 roomId: found.roomId,
-                scheduleDate: dayjs(found.scheduleDate),
-                scheduleStart: dayjs(found.scheduleStart, 'HH:mm'),
-                scheduleEnd: dayjs(found.scheduleEnd, 'HH:mm'),
+                scheduleStart: dayjs(found.scheduleStart),
+                scheduleEnd: dayjs(found.scheduleEnd),
+                format: found.format || '2D',
+                audioType: found.audioType || 'SUBTITLE',
             });
         }
     }, [schedules, scheduleId, form]);
 
     const onFinish = (values) => {
+        // cinemaId không gửi — rạp suy ra từ phòng ở backend.
         const data = {
-            ...values,
-            scheduleDate: values.scheduleDate.format('YYYY-MM-DD'),
-            scheduleStart: values.scheduleStart.format('HH:mm'),
-            scheduleEnd: values.scheduleEnd.format('HH:mm'),
+            movieId: values.movieId,
+            roomId: values.roomId,
+            scheduleStart: values.scheduleStart.format('YYYY-MM-DDTHH:mm:ss'),
+            scheduleEnd: values.scheduleEnd.format('YYYY-MM-DDTHH:mm:ss'),
+            format: values.format,
+            audioType: values.audioType,
         };
 
         dispatch(updateSchedule({ data, scheduleId }))
@@ -77,24 +81,35 @@ export default function EditSchedule() {
                     <Input />
                 </Form.Item>
 
-                <Form.Item label="Rạp chiếu (cinemaId)" name="cinemaId" rules={[{ required: true, message: 'Vui lòng nhập mã rạp' }]}>
-                    <Input />
+                <Form.Item label="Rạp chiếu (suy ra từ phòng)" name="cinemaId">
+                    <Input disabled />
                 </Form.Item>
 
                 <Form.Item label="Phòng chiếu (roomId)" name="roomId" rules={[{ required: true, message: 'Vui lòng nhập mã phòng' }]}>
                     <Input />
                 </Form.Item>
 
-                <Form.Item label="Ngày chiếu" name="scheduleDate" rules={[{ required: true, message: 'Vui lòng chọn ngày chiếu' }]}>
-                    <DatePicker format="YYYY-MM-DD" className="w-full" />
+                <Form.Item label="Bắt đầu (ngày + giờ)" name="scheduleStart" rules={[{ required: true, message: 'Vui lòng chọn thời điểm bắt đầu' }]}>
+                    <DatePicker showTime format="YYYY-MM-DD HH:mm" className="w-full" />
                 </Form.Item>
 
-                <Form.Item label="Giờ bắt đầu" name="scheduleStart" rules={[{ required: true, message: 'Vui lòng chọn giờ bắt đầu' }]}>
-                    <TimePicker format="HH:mm" className="w-full" />
+                <Form.Item label="Kết thúc (ngày + giờ)" name="scheduleEnd" rules={[{ required: true, message: 'Vui lòng chọn thời điểm kết thúc' }]}>
+                    <DatePicker showTime format="YYYY-MM-DD HH:mm" className="w-full" />
                 </Form.Item>
 
-                <Form.Item label="Giờ kết thúc" name="scheduleEnd" rules={[{ required: true, message: 'Vui lòng chọn giờ kết thúc' }]}>
-                    <TimePicker format="HH:mm" className="w-full" />
+                <Form.Item label="Định dạng" name="format">
+                    <Select>
+                        <Option value="2D">2D</Option>
+                        <Option value="3D">3D</Option>
+                        <Option value="IMAX">IMAX</Option>
+                    </Select>
+                </Form.Item>
+
+                <Form.Item label="Âm thanh" name="audioType">
+                    <Select>
+                        <Option value="SUBTITLE">Phụ đề</Option>
+                        <Option value="DUB">Lồng tiếng</Option>
+                    </Select>
                 </Form.Item>
 
                 <Form.Item>

@@ -35,6 +35,7 @@ public class UserService {
     RoleRepository roleRepository;
     EmailService emailService;
     PasswordOtpRepository passwordTokenRepository;
+    CloudinaryService cloudinaryService;
 
     public UserResponse getById(String id) {
         return userMapper.toUserResponse(userRepository.findById(id)
@@ -49,6 +50,16 @@ public class UserService {
     public List<UserResponse> getAll() {
         List<User> users = userRepository.findAll();
         return users.stream().map(userMapper::toUserResponse).toList();
+    }
+
+    public List<UserResponse> searchUsers(String q) {
+        if (q == null || q.isBlank())
+            return List.of();
+        String selfId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.searchUsers(q.trim(), selfId).stream()
+                .limit(20)
+                .map(userMapper::toUserResponse)
+                .toList();
     }
 
 
@@ -73,6 +84,7 @@ public class UserService {
     public UserResponse update(UserUpdateRequest request, String id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTS));
+        String oldAvatar = user.getAvatar();
         if (request.getPassword() != null)
             request.setPassword(passwordEncoder.encode(request.getPassword()));
         userMapper.UpdateUser(request, user);
@@ -82,7 +94,11 @@ public class UserService {
                 throw new AppException(ErrorCode.INVALID_ROLE);
             user.setRoles(new HashSet<>(roles));
         }
-        return userMapper.toUserResponse(userRepository.save(user));
+        UserResponse response = userMapper.toUserResponse(userRepository.save(user));
+        // Avatar đã đổi sang URL mới -> xóa ảnh cũ trên Cloudinary (best-effort)
+        if (request.getAvatar() != null && !request.getAvatar().equals(oldAvatar))
+            cloudinaryService.deleteByUrl(oldAvatar);
+        return response;
     }
 
     public void delete(String id) {

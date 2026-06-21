@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
+
 import static jakarta.persistence.GenerationType.IDENTITY;
 
 @Entity
@@ -30,5 +32,5 @@ public class BookingFoodAndDrink {
 
     int quantity;
 
-    double price; // Tổng giá món này (giá * số lượng)
+    BigDecimal price; // Tổng giá món này (giá * số lượng)
 }

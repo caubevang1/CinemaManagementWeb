@@ -17,6 +17,10 @@ spring:
   jackson:
     date-format: yyyy-MM-dd
     time-format: HH:mm:ss
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
   mail:
     host: smtp.gmail.com
     port: 587
@@ -49,5 +53,10 @@ tmdb:
   api-key: ${TMDB_KEY}
   base-url: https://api.themoviedb.org/3
   image-base-url: https://image.tmdb.org/t/p/w500
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
 
 

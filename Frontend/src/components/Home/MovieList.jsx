@@ -35,7 +35,12 @@ export default function MovieList(props) {
                     {
                         label: 'Phim đang chiếu',
                         key: '1',
-                        children: <MultipleRowSlick status={false} arrFilm={arrFilm} />,
+                        children: <MultipleRowSlick arrFilm={arrFilm.filter(f => f.status === 'NOW_SHOWING')} />,
+                    },
+                    {
+                        label: 'Phim sắp chiếu',
+                        key: '2',
+                        children: <MultipleRowSlick arrFilm={arrFilm.filter(f => f.status === 'COMING_SOON')} />,
                     },
                 ]}
             />

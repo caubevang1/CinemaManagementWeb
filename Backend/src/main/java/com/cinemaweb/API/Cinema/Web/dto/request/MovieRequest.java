@@ -1,5 +1,6 @@
 package com.cinemaweb.API.Cinema.Web.dto.request;
 
+import com.cinemaweb.API.Cinema.Web.enums.MovieStatus;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
@@ -27,4 +28,6 @@ public class MovieRequest {
 
     @NotNull(message = "RELEASE_DATE_NULL")
     LocalDate releaseDate;
+
+    MovieStatus status;
 }

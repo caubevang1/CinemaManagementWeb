@@ -9,6 +9,7 @@ import com.cinemaweb.API.Cinema.Web.repository.FoodAndDrinkRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -37,10 +38,12 @@ public class BookingFoodAndDrinkService {
         BookingFoodAndDrink bookingFoodAndDrink =  bookingFoodAndDrinkMapper
                 .toCreateBookingFoodAndDrink(bookingFoodAndDrinkCreateRequest);
 
-        double price = bookingFoodAndDrinkCreateRequest.getQuantity() *
-                foodAndDrinkRepository.findById(Integer.toString(bookingFoodAndDrinkCreateRequest.getFoodAndDrinkId()))
-                        .orElseThrow(() -> new RuntimeException("FoodAndDrinkId in createBookingF&D is not found !"))
-                        .getFoodAndDrinkPrice();
+        BigDecimal unitPrice = foodAndDrinkRepository
+                .findById(Integer.toString(bookingFoodAndDrinkCreateRequest.getFoodAndDrinkId()))
+                .orElseThrow(() -> new RuntimeException("FoodAndDrinkId in createBookingF&D is not found !"))
+                .getFoodAndDrinkPrice();
+        BigDecimal price = unitPrice.multiply(
+                BigDecimal.valueOf(bookingFoodAndDrinkCreateRequest.getQuantity()));
 
         bookingFoodAndDrink.setPrice(price);
 

@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
+
 import static jakarta.persistence.GenerationType.IDENTITY;
 
 @Entity
@@ -27,5 +29,5 @@ public class BookingSeat {
     @JoinColumn(name = "seat_schedule_id")
     SeatSchedule seatSchedule;
 
-    double price;
+    BigDecimal price;
 }

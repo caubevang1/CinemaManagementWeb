@@ -1,5 +1,6 @@
 package com.cinemaweb.API.Cinema.Web.dto.response;
 
+import com.cinemaweb.API.Cinema.Web.enums.MovieStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -22,4 +23,5 @@ public class MovieResponse {
     Integer tmdbId;
     String trailerUrl;
     LocalDate releaseDate;
+    MovieStatus status;
 }

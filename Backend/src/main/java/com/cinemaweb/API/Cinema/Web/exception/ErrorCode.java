@@ -57,7 +57,28 @@ public enum ErrorCode {
     // ─────────────── 5xxx: Movie-related Errors ───────────────
     MOVIE_EXISTED(5001, "Phim đã tồn tại (trùng tên và ngày phát hành)!", HttpStatus.BAD_REQUEST),
     TMDB_MOVIE_EXISTED(5002, "Phim này đã được import từ TMDB!", HttpStatus.BAD_REQUEST),
-    RELEASE_DATE_NULL(5003, "Ngày phát hành không được để trống!", HttpStatus.BAD_REQUEST);
+    RELEASE_DATE_NULL(5003, "Ngày phát hành không được để trống!", HttpStatus.BAD_REQUEST),
+    MOVIE_NOT_EXISTS(5004, "Phim không tồn tại!", HttpStatus.BAD_REQUEST),
+
+    // ─────────────── 6xxx: Booking & Schedule Errors ───────────────
+    SEAT_SCHEDULE_NOT_EXISTS(6001, "Ghế của suất chiếu không tồn tại!", HttpStatus.BAD_REQUEST),
+    SEAT_ALREADY_BOOKED(6002, "Ghế đã được đặt, vui lòng chọn ghế khác!", HttpStatus.CONFLICT),
+    SCHEDULE_TIME_OVERLAP(6003, "Khung giờ chiếu bị trùng với suất chiếu khác trong cùng phòng!", HttpStatus.BAD_REQUEST),
+    SEAT_HELD_BY_OTHER(6004, "Ghế đang được giữ bởi người khác!", HttpStatus.CONFLICT),
+    HOLD_EXPIRED(6005, "Phiên giữ ghế đã hết hạn, vui lòng chọn lại!", HttpStatus.BAD_REQUEST),
+
+    // ─────────────── 7xxx: Social (Comment & Friendship) Errors ───────────────
+    COMMENT_NOT_EXISTS(7001, "Bình luận không tồn tại!", HttpStatus.BAD_REQUEST),
+    COMMENT_NOT_OWNER(7002, "Bạn không có quyền với bình luận này!", HttpStatus.FORBIDDEN),
+    FRIEND_SELF(7003, "Không thể tự kết bạn với chính mình!", HttpStatus.BAD_REQUEST),
+    FRIEND_REQUEST_EXISTS(7004, "Lời mời kết bạn hoặc quan hệ bạn bè đã tồn tại!", HttpStatus.BAD_REQUEST),
+    FRIEND_REQUEST_NOT_EXISTS(7005, "Lời mời kết bạn không tồn tại!", HttpStatus.BAD_REQUEST),
+    FRIEND_NOT_AUTHORIZED(7006, "Bạn không có quyền với quan hệ bạn bè này!", HttpStatus.FORBIDDEN),
+
+    // ─────────────── 8xxx: File Upload Errors ───────────────
+    FILE_EMPTY(8001, "File tải lên không được để trống!", HttpStatus.BAD_REQUEST),
+    INVALID_FILE_TYPE(8002, "Chỉ chấp nhận file ảnh!", HttpStatus.BAD_REQUEST),
+    UPLOAD_FAILED(8003, "Tải ảnh lên thất bại!", HttpStatus.INTERNAL_SERVER_ERROR);
 
     int code;
     String message;

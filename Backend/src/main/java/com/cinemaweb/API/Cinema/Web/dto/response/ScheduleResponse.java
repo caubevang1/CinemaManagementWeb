@@ -3,8 +3,7 @@ package com.cinemaweb.API.Cinema.Web.dto.response;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -15,12 +14,14 @@ public class ScheduleResponse {
     int scheduleId;
     int movieId;
     int roomId;
-    int cinemaId;
+    int cinemaId;   // suy ra từ room.cinema (giữ trong response cho FE)
     String movieName;
     String roomName;
     String cinemaName;
 
-    LocalDate scheduleDate;  //LocalDate in Jav
-    LocalTime scheduleStart; //LocalTime in Java
-    LocalTime scheduleEnd;
+    LocalDateTime scheduleStart;
+    LocalDateTime scheduleEnd;
+
+    String format;
+    String audioType;
 }

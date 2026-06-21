@@ -10,20 +10,15 @@ import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface SeatScheduleMapper {
+    // seatPrice lấy theo suất (seat_schedule.price), seatState enum -> tên chuỗi.
     @Mapping(source = "schedule.scheduleId", target = "scheduleId")
     @Mapping(source = "seat.seatId", target = "seatId")
     @Mapping(source = "seat.seatType", target = "seatType")
     @Mapping(source = "seat.seatRow", target = "seatRow")
     @Mapping(source = "seat.seatNumber", target = "seatNumber")
-    @Mapping(source = "seat.seatPrice", target = "seatPrice")
+    @Mapping(source = "price", target = "seatPrice")
     SeatScheduleResponse toSeatSchedule(SeatSchedule seatSchedule);
 
-    @Mapping(source = "schedule.scheduleId", target = "scheduleId")
-    @Mapping(source = "seat.seatId", target = "seatId")
-    @Mapping(source = "seat.seatType", target = "seatType")
-    @Mapping(source = "seat.seatRow", target = "seatRow")
-    @Mapping(source = "seat.seatNumber", target = "seatNumber")
-    @Mapping(source = "seat.seatPrice", target = "seatPrice")
     List<SeatScheduleResponse> toListSeatSchedule(List<SeatSchedule> listSeatSchedule);
 
     @Mapping(source = "scheduleId", target = "schedule.scheduleId")

@@ -155,10 +155,14 @@ public class AuthenticationService {
         passwordOtpRepository.invalidateOtp(user.getID());
         passwordOtpRepository.flush();
 
+        // Ba mốc thời gian OTP (giữ nhất quán):
+        //  - TTL hiệu lực OTP: 5 phút (đủ để nhận email và nhập).
+        //  - Chống spam gửi lại: 90s (countOtp dùng INTERVAL 1.5 MINUTE, khớp WAIT_OTP).
+        //  - Dọn OTP hết hạn: scheduler chạy mỗi 5 phút (ScheduledTasks).
         PasswordOTP passwordOTP = PasswordOTP.builder()
                 .OTP(UUID.randomUUID().toString())
                 .user(user)
-                .expiryTime(new Date(Instant.now().plus(5, ChronoUnit.SECONDS).toEpochMilli()))
+                .expiryTime(new Date(Instant.now().plus(5, ChronoUnit.MINUTES).toEpochMilli()))
                 .valid(true)
                 .build();
 

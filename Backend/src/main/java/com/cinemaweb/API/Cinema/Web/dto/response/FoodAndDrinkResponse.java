@@ -3,6 +3,8 @@ package com.cinemaweb.API.Cinema.Web.dto.response;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -12,6 +14,6 @@ public class FoodAndDrinkResponse {
     int foodAndDrinkId;
     String foodAndDrinkName;
     String cinemaName;
-    double foodAndDrinkPrice;
+    BigDecimal foodAndDrinkPrice;
     String imageFoodAndDrink;
 }

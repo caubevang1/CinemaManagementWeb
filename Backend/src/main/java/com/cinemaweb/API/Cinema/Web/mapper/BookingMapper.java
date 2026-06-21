@@ -10,7 +10,7 @@ import org.mapstruct.Mapping;
 public interface BookingMapper {
     @Mapping(source = "schedule.movie.movieName",target = "movieName")
     @Mapping(source = "schedule.room.roomName",target = "roomName")
-    @Mapping(source = "schedule.cinema.cinemaName",target = "cinemaName")
+    @Mapping(source = "schedule.room.cinema.cinemaName",target = "cinemaName")
     @Mapping(source = "user.username",target = "username")
     BookingResponse toBookingResponse(Booking booking);
 

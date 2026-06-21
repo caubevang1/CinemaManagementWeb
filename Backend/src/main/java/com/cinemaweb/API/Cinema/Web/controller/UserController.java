@@ -48,6 +48,13 @@ public class UserController {
                 .build();
     }
 
+    @GetMapping("/search")
+    public ApiResponse<List<UserResponse>> search(@RequestParam("q") String q) {
+        return ApiResponse.<List<UserResponse>>builder()
+                .body(userService.searchUsers(q))
+                .build();
+    }
+
     @GetMapping("/{userId}")
     @PostAuthorize("hasRole('ADMIN') || returnObject.body.username == authentication.name")
     public ApiResponse<UserResponse> get(@PathVariable("userId") String id) {

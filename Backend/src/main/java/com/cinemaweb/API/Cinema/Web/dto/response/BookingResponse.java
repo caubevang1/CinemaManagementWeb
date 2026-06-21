@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,6 +23,6 @@ public class BookingResponse {
     List<BookingSeatResponse> seats;
     String username;
     List<BookingFoodAndDrinkResponse> foodAndDrinks;
-    Double price;
+    BigDecimal price;
     LocalDateTime bookingDay;
 }

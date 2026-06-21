@@ -3,6 +3,9 @@ package com.cinemaweb.API.Cinema.Web.service;
 import com.cinemaweb.API.Cinema.Web.dto.request.ScheduleRequest;
 import com.cinemaweb.API.Cinema.Web.dto.response.ScheduleResponse;
 import com.cinemaweb.API.Cinema.Web.entity.*;
+import com.cinemaweb.API.Cinema.Web.enums.SeatState;
+import com.cinemaweb.API.Cinema.Web.exception.AppException;
+import com.cinemaweb.API.Cinema.Web.exception.ErrorCode;
 import com.cinemaweb.API.Cinema.Web.mapper.ScheduleMapper;
 import com.cinemaweb.API.Cinema.Web.mapper.SeatScheduleMapper;
 import com.cinemaweb.API.Cinema.Web.repository.*;
@@ -22,9 +25,6 @@ public class ScheduleService {
 
     @Autowired
     ScheduleMapper scheduleMapper;
-
-    @Autowired
-    CinemaRepository cinemaRepository;
 
     @Autowired
     RoomRepository roomRepository;
@@ -52,18 +52,27 @@ public class ScheduleService {
 
     public void createSchedule(ScheduleRequest scheduleCreateRequest) {
         Schedule schedule = scheduleMapper.toCreateSchedule(scheduleCreateRequest);
+
+        // Chặn 2 suất cùng phòng trùng khung giờ (DB không có exclusion constraint).
+        if (scheduleRepository.existsOverlappingSchedule(
+                schedule.getRoom().getRoomId(),
+                schedule.getScheduleStart(),
+                schedule.getScheduleEnd())) {
+            throw new AppException(ErrorCode.SCHEDULE_TIME_OVERLAP);
+        }
+
         scheduleRepository.save(schedule);
 
         int roomId = schedule.getRoom().getRoomId();
-        int scheduleId = schedule.getScheduleId();
-        //Create SeatSchedule
+        //Create SeatSchedule: mỗi ghế trong phòng -> 1 dòng AVAILABLE, giá khởi tạo từ seat.
         List<Seat> seats = seatRepository.findByRoom_RoomId(roomId);
         List<SeatSchedule> seatSchedules = new ArrayList<>();
-        for(int i = 0; i < seats.size(); i++) {
+        for (Seat seat : seats) {
             SeatSchedule seatSchedule = SeatSchedule.builder()
                     .schedule(schedule)
-                    .seat(seats.get(i))
-                    .seatState(false)
+                    .seat(seat)
+                    .seatState(SeatState.AVAILABLE)
+                    .price(seat.getSeatPrice())
                     .build();
             seatSchedules.add(seatSchedule);
         }
@@ -71,9 +80,6 @@ public class ScheduleService {
     }
 
     public void updateSchedule(String scheduleId, ScheduleRequest scheduleUpdateRequest) {
-        Cinema cinema = cinemaRepository.findById(Integer.toString(scheduleUpdateRequest.getCinemaId()))
-                .orElseThrow(() -> new RuntimeException("Cinema id in updateSchedule is not found!"));
-
         Room room = roomRepository.findById(Integer.toString(scheduleUpdateRequest.getRoomId()))
                 .orElseThrow(() -> new RuntimeException("Room id in updateSchedule is not found!"));
 
@@ -83,10 +89,20 @@ public class ScheduleService {
         Schedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new RuntimeException("Schedule id in updateSchedule is not found!"));
 
-        schedule.setCinema(cinema);
+        // Cinema suy ra từ room — không set trực tiếp nữa.
         schedule.setMovie(movie);
         schedule.setRoom(room);
-        scheduleMapper.toUpdateSchedule(schedule,scheduleUpdateRequest);
+        scheduleMapper.toUpdateSchedule(schedule, scheduleUpdateRequest);
+
+        // Chặn trùng khung giờ, loại trừ chính suất đang cập nhật.
+        if (scheduleRepository.existsOverlappingScheduleExcluding(
+                room.getRoomId(),
+                schedule.getScheduleStart(),
+                schedule.getScheduleEnd(),
+                schedule.getScheduleId())) {
+            throw new AppException(ErrorCode.SCHEDULE_TIME_OVERLAP);
+        }
+
         scheduleRepository.save(schedule);
     }
 

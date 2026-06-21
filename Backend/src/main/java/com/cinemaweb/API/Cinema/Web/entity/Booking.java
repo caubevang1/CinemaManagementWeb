@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -29,6 +30,6 @@ public class Booking {
     @JoinColumn(name = "user_id")
     User user;
 
-    double price;
+    BigDecimal price;
     LocalDateTime bookingDay;
 }

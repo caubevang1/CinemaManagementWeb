@@ -1,4 +1,4 @@
-import { Form, Input, InputNumber } from 'antd';
+import { Form, Input, InputNumber, Select } from 'antd';
 import React, { useState, useEffect } from 'react';
 import { useFormik } from 'formik';
 import { callApiThongTinPhim, upDateFilm } from '../../../redux/reducers/FilmReducer';
@@ -26,6 +26,7 @@ export default () => {
             moviePoster: thongTinPhim.moviePoster || '',
             movieGenre: thongTinPhim.movieGenre || '',
             movieLength: thongTinPhim.movieLength || '',
+            status: thongTinPhim.status || 'NOW_SHOWING',
         },
         onSubmit: (value) => {
             const updatedMovie = {
@@ -36,6 +37,7 @@ export default () => {
                 moviePoster: value.moviePoster,
                 movieGenre: value.movieGenre,
                 movieLength: value.movieLength,
+                status: value.status,
             };
 
             dispatch(upDateFilm(updatedMovie, value.movieId));
@@ -82,6 +84,18 @@ export default () => {
                         min={1}
                         max={5}
                         value={formik.values.movieReview}
+                    />
+                </Form.Item>
+
+                <Form.Item label="Trạng thái">
+                    <Select
+                        value={formik.values.status}
+                        onChange={(value) => formik.setFieldValue('status', value)}
+                        options={[
+                            { value: 'NOW_SHOWING', label: 'Đang chiếu' },
+                            { value: 'COMING_SOON', label: 'Sắp chiếu' },
+                            { value: 'ENDED', label: 'Ngừng chiếu' },
+                        ]}
                     />
                 </Form.Item>
 

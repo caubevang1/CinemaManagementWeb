@@ -12,6 +12,7 @@ import com.cinemaweb.API.Cinema.Web.repository.SeatRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -55,17 +56,17 @@ public class RoomService {
                         .seatType("")
                         .seatRow(alphabetRow)
                         .seatNumber(col)
-                        .seatPrice(100000)
+                        .seatPrice(BigDecimal.valueOf(100000))
                         .build();
                 if(row == numRows) {
                     seat.setSeatType("Couple");
-                    seat.setSeatPrice(seatPrice[0]);
+                    seat.setSeatPrice(BigDecimal.valueOf(seatPrice[0]));
                 } else if(row <= 3) {
                     seat.setSeatType("Normal");
-                    seat.setSeatPrice(seatPrice[1]);
+                    seat.setSeatPrice(BigDecimal.valueOf(seatPrice[1]));
                 } else {
                     seat.setSeatType("VIP");
-                    seat.setSeatPrice(seatPrice[2]);
+                    seat.setSeatPrice(BigDecimal.valueOf(seatPrice[2]));
                 }
                 seats.add(seat);
             }

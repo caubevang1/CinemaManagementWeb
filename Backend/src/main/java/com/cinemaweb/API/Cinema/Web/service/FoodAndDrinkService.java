@@ -23,6 +23,9 @@ public class FoodAndDrinkService {
     @Autowired
     private CinemaRepository cinemaRepository;
 
+    @Autowired
+    private CloudinaryService cloudinaryService;
+
     public List<FoodAndDrinkResponse> getAllFoodAndDrink() {
         return foodAndDrinkMapper.toFoodAndDrinkResponseList(foodAndDrinkRepository.findAll());
     }
@@ -43,13 +46,20 @@ public class FoodAndDrinkService {
 
         FoodAndDrink foodAndDrink = foodAndDrinkRepository.findById(foodAndDrinkId)
                 .orElseThrow(() -> new RuntimeException("FoodAndDrink id in update fd is not found!"));
+        String oldImage = foodAndDrink.getImageFoodAndDrink();
         foodAndDrink.setCinema(cinema);
         foodAndDrinkMapper.toUpdateFoodAndDrink(foodAndDrink,foodAndDrinkUpdateRequest);
 
         foodAndDrinkRepository.save(foodAndDrink);
+        // Ảnh đã đổi -> xóa ảnh cũ trên Cloudinary (best-effort)
+        if (foodAndDrink.getImageFoodAndDrink() != null
+                && !foodAndDrink.getImageFoodAndDrink().equals(oldImage))
+            cloudinaryService.deleteByUrl(oldImage);
     }
 
     public void deleteFoodAndDrink(String foodAndDrinkId) {
+        foodAndDrinkRepository.findById(foodAndDrinkId)
+                .ifPresent(fd -> cloudinaryService.deleteByUrl(fd.getImageFoodAndDrink()));
         foodAndDrinkRepository.deleteById(foodAndDrinkId);
     }
 }

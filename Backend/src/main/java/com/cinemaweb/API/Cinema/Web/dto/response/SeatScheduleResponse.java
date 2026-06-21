@@ -1,9 +1,10 @@
 package com.cinemaweb.API.Cinema.Web.dto.response;
 
-import com.cinemaweb.API.Cinema.Web.entity.Schedule;
-import com.cinemaweb.API.Cinema.Web.entity.Seat;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -17,6 +18,7 @@ public class SeatScheduleResponse {
     String seatType;
     char seatRow;
     int seatNumber;
-    double seatPrice;
-    boolean seatState; // true = booked, false = available
+    BigDecimal seatPrice;        // giá hiệu lực theo suất (seat_schedule.price)
+    String seatState;            // AVAILABLE / HELD / BOOKED
+    LocalDateTime heldUntil;     // thời điểm hết hạn giữ ghế (khi HELD)
 }

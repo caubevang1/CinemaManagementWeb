@@ -11,30 +11,23 @@ import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface ScheduleMapper {
+    // Cinema suy ra qua room.cinema (schedule không còn cột cinema_id).
     @Mapping(source = "movie.movieName", target = "movieName")
     @Mapping(source = "room.roomName", target = "roomName")
-    @Mapping(source = "cinema.cinemaName", target = "cinemaName")
+    @Mapping(source = "room.cinema.cinemaName", target = "cinemaName")
     @Mapping(source = "room.roomId", target = "roomId")
     @Mapping(source = "movie.movieId", target = "movieId")
-    @Mapping(source = "cinema.cinemaId", target = "cinemaId")
+    @Mapping(source = "room.cinema.cinemaId", target = "cinemaId")
     ScheduleResponse toScheduleResponse(Schedule schedule);
 
-    @Mapping(source = "movie.movieName", target = "movieName")
-    @Mapping(source = "room.roomName", target = "roomName")
-    @Mapping(source = "cinema.cinemaName", target = "cinemaName")
-    @Mapping(source = "room.roomId", target = "roomId")
-    @Mapping(source = "movie.movieId", target = "movieId")
-    @Mapping(source = "cinema.cinemaId", target = "cinemaId")
     List<ScheduleResponse> toScheduleResponseList(List<Schedule> scheduleList);
 
     @Mapping(source = "movieId", target = "movie.movieId")
     @Mapping(source = "roomId", target = "room.roomId")
-    @Mapping(source = "cinemaId", target = "cinema.cinemaId")
     Schedule toCreateSchedule(ScheduleRequest scheduleRequest);
 
     @Mapping(target = "scheduleId", ignore=true)
     @Mapping(target = "movie.movieId", ignore=true)
     @Mapping(target = "room.roomId", ignore=true)
-    @Mapping(target = "cinema.cinemaId", ignore=true)
     void toUpdateSchedule(@MappingTarget Schedule schedule, ScheduleRequest scheduleUpdateRequest);
 }

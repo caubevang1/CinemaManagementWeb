@@ -1,6 +1,10 @@
 package com.cinemaweb.API.Cinema.Web.entity;
 
+import com.cinemaweb.API.Cinema.Web.enums.MovieStatus;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -37,4 +41,8 @@ public class Movie {
     Integer tmdbId;
     String trailerUrl;
     LocalDate releaseDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    MovieStatus status;
 }

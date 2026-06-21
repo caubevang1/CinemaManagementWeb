@@ -3,8 +3,7 @@ package com.cinemaweb.API.Cinema.Web.dto.request;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -14,9 +13,11 @@ import java.time.LocalTime;
 public class ScheduleRequest {
     int movieId;
     int roomId;
-    int cinemaId;
+    // cinemaId bỏ khỏi request — rạp suy ra từ room.cinema.
 
-    LocalDate scheduleDate;  //LocalDate in Java
-    LocalTime scheduleStart; //LocalTime in Java
-    LocalTime scheduleEnd;
+    LocalDateTime scheduleStart; // DATETIME (ngày + giờ)
+    LocalDateTime scheduleEnd;
+
+    String format;     // 2D / 3D / IMAX
+    String audioType;  // SUBTITLE / DUB
 }

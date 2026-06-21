@@ -9,7 +9,7 @@ import useRoute from '../../hooks/useRoute';
 import { LOCALSTORAGE_USER } from '../../utils/constant';
 import { getLocalStorage, SwalConfig } from '../../utils/config';
 import LoadingPage from '../LoadingPage';
-import { LayDanhSachPhongVeService, DatVe, LayDanhSachGheSchedule } from '../../services/BookingManager';
+import { LayDanhSachPhongVeService, DatVe, LayDanhSachGheTheoSuat } from '../../services/BookingManager';
 import { datGhe, layDanhSachPhongVe, xoaDanhSachGheDangDat } from '../../redux/reducers/BookingReducer';
 import { callApiThongTinNguoiDung } from '../../redux/reducers/UserReducer';
 import { layThongTinPhong } from '../../services/CinemaService';
@@ -30,7 +30,7 @@ const BookingTicketPage = () => {
         (async () => {
             try {
                 const sch = (await LayDanhSachPhongVeService(param.id)).data.body;
-                const allSeats = (await LayDanhSachGheSchedule()).data.body;
+                const seatsRaw = (await LayDanhSachGheTheoSuat(sch.scheduleId)).data.body;
                 const rooms = (await layThongTinPhong()).data.body;
                 const room = rooms.find(r => r.roomId === sch.roomId);
                 if (room) {
@@ -45,13 +45,12 @@ const BookingTicketPage = () => {
                     movieName: sch.movieName,
                     cinemaName: sch.cinemaName,
                     roomName: room?.roomName,
-                    scheduleDate: moment(sch.scheduleDate).format('DD-MM-YYYY'),
-                    scheduleStart: sch.scheduleStart,
-                    scheduleEnd: sch.scheduleEnd
+                    scheduleDate: moment(sch.scheduleStart).format('DD-MM-YYYY'),
+                    scheduleStart: moment(sch.scheduleStart).format('HH:mm'),
+                    scheduleEnd: moment(sch.scheduleEnd).format('HH:mm')
                 };
 
-                const seats = allSeats
-                    .filter(s => s.scheduleId === sch.scheduleId)
+                const seats = seatsRaw
                     .map(s => ({
                         seatScheduleId: s.seatScheduleId || s.seatScheduleId || s.seatScheduleID || s.seatSchedule?.id || s.id,
                         seatId: s.seatId,
@@ -94,7 +93,8 @@ const BookingTicketPage = () => {
                                     return <div key={i} style={{ width: 40, height: 40, margin: 4 }} />;
                                 }
 
-                                const booked = ghe.seatState;
+                                // seatState giờ là chuỗi: AVAILABLE / HELD / BOOKED.
+                                const booked = ghe.seatState === 'BOOKED' || ghe.seatState === 'HELD';
                                 const selecting = danhSachGheDangDat.some(d => d.seatId === ghe.seatId);
                                 const mine = thongTinNguoiDung.username === ghe.username;
 

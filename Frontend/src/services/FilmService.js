@@ -3,6 +3,8 @@ import { http } from "../utils/baseUrl";
 
 export const LayDanhSachPhim = () => http.get(`/movies`)
 
+export const LayDanhSachPhimAdmin = () => http.get(`/movies/all`)
+
 export const LayThongTinPhimChiTiet = (id) => http.get(`/movies/${id}`)
 
 export const themPhim = (formData) => http.post(`/movies`, formData)

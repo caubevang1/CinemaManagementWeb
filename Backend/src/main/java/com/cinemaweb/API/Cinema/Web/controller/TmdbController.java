@@ -4,6 +4,7 @@ import com.cinemaweb.API.Cinema.Web.dto.response.ApiResponse;
 import com.cinemaweb.API.Cinema.Web.dto.response.MovieResponse;
 import com.cinemaweb.API.Cinema.Web.dto.response.TmdbMovieResult;
 import com.cinemaweb.API.Cinema.Web.entity.Movie;
+import com.cinemaweb.API.Cinema.Web.enums.MovieStatus;
 import com.cinemaweb.API.Cinema.Web.exception.AppException;
 import com.cinemaweb.API.Cinema.Web.exception.ErrorCode;
 import com.cinemaweb.API.Cinema.Web.mapper.MovieMapper;
@@ -62,6 +63,11 @@ public class TmdbController {
         movie.setMovieReview(detail.getVoteAverage() / 2);
         movie.setTrailerUrl(detail.getTrailerUrl());
         movie.setReleaseDate(detail.getReleaseDate());
+        // Phim chưa tới ngày phát hành -> sắp chiếu, ngược lại -> đang chiếu.
+        movie.setStatus(
+                detail.getReleaseDate() != null && detail.getReleaseDate().isAfter(java.time.LocalDate.now())
+                        ? MovieStatus.COMING_SOON
+                        : MovieStatus.NOW_SHOWING);
 
         return ApiResponse.<MovieResponse>builder()
                 .body(movieMapper.toMovieResponse(movieRepository.save(movie)))

@@ -3,10 +3,8 @@ package com.cinemaweb.API.Cinema.Web.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.springframework.format.annotation.DateTimeFormat;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 
 import static jakarta.persistence.GenerationType.IDENTITY;
 
@@ -21,19 +19,21 @@ public class Schedule {
     @GeneratedValue(strategy = IDENTITY)
     int scheduleId;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "movie_id")
     Movie movie;
 
-    @ManyToOne
+    // Rạp suy ra qua room.cinema — không lưu cinema_id trên schedule nữa (tránh dữ liệu thừa/lệch).
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "room_id")
     Room room;
 
-    @ManyToOne
-    @JoinColumn(name = "cinema_id")
-    Cinema cinema;
-    
-    LocalDate scheduleDate;  //LocalDate in Jav
-    LocalTime scheduleStart; //LocalTime in Java
-    LocalTime scheduleEnd;
+    // Gộp ngày + giờ vào DATETIME để suất chiếu qua nửa đêm (end < start cũ) không còn sai logic.
+    LocalDateTime scheduleStart;
+    LocalDateTime scheduleEnd;
+
+    // Định dạng chiếu: 2D / 3D / IMAX
+    String format;
+    // Âm thanh: SUBTITLE (phụ đề) / DUB (lồng tiếng)
+    String audioType;
 }

@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit'
 import { LayThongTinLichChieu, LayThongTinLichChieuChiTiet } from '../../services/CinemaService';
-import { capNhatPhim, LayDanhSachPhim, LayThongTinPhimChiTiet, themPhim, xoaPhim } from '../../services/FilmService';
+import { capNhatPhim, LayDanhSachPhim, LayDanhSachPhimAdmin, LayThongTinPhimChiTiet, themPhim, xoaPhim } from '../../services/FilmService';
 import { SwalConfig } from '../../utils/config';
 import { history } from '../../utils/history'
 
@@ -53,6 +53,16 @@ export const callApiFilm = async (dispatch) => {
     }
 }
 
+// Admin: lấy tất cả phim (kể cả ENDED) để quản lý.
+export const callApiFilmAdmin = async (dispatch) => {
+    try {
+        const apiFilm = await LayDanhSachPhimAdmin()
+        dispatch(getFilmList(apiFilm.data.body))
+    } catch (error) {
+        console.log(error)
+    }
+}
+
 export const themPhimApi = async (formData) => {
     try {
         await themPhim(formData)
@@ -87,7 +97,7 @@ export const upDateFilm = async (formData, id) => {
 export const callApiXoaPhim = (movieId) => async (dispatch) => {
     try {
         const result = await xoaPhim(movieId)
-        dispatch(callApiFilm)
+        dispatch(callApiFilmAdmin)
         SwalConfig(result.data.message, 'success', false)
         history.push('/admin/film')
     } catch (error) {

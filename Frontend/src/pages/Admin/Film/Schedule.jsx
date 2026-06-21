@@ -62,22 +62,22 @@ export default function Schedule() {
         },
         {
             title: 'Ngày chiếu',
-            dataIndex: 'scheduleDate',
-            render: (text) => new Date(text).toLocaleDateString('vi-VN'),
-        },
-        {
-            title: 'Giờ bắt đầu',
             dataIndex: 'scheduleStart',
-            render: (text) => {
-                return text;
-            },
+            render: (text) => (text ? new Date(text).toLocaleDateString('vi-VN') : ''),
         },
         {
-            title: 'Giờ kết thúc',
+            title: 'Bắt đầu',
+            dataIndex: 'scheduleStart',
+            render: (text) => (text ? new Date(text).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''),
+        },
+        {
+            title: 'Kết thúc',
             dataIndex: 'scheduleEnd',
-            render: (text) => {
-                return text;
-            },
+            render: (text) => (text ? new Date(text).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''),
+        },
+        {
+            title: 'Định dạng',
+            dataIndex: 'format',
         },
         {
             title: 'Hành động',

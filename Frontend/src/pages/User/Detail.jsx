@@ -202,6 +202,7 @@ export default function Detail() {
                     </div>
                 </div>
                 {isModalOpen ? <Modal
+                    className="trailer-modal"
                     footer={null}
                     centered
                     closable={false}

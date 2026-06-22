@@ -248,38 +248,8 @@ LOCK TABLES `movie` WRITE;
 ;
 UNLOCK TABLES;
 
---
--- Table structure for table `password_otp`
---
-
-DROP TABLE IF EXISTS `password_otp`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */
-;
-/*!50503 SET character_set_client = utf8mb4 */
-;
-CREATE TABLE `password_otp` (
-    `otp` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-    `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `expiry_time` datetime(6) NOT NULL,
-    `valid` tinyint(1) NOT NULL,
-    `user_id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    PRIMARY KEY (`otp`),
-    KEY `fk_password_otp_user1_idx` (`user_id`),
-    CONSTRAINT `fk_password_otp_user1` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */
-;
-
---
--- Dumping data for table `password_otp`
---
-
-LOCK TABLES `password_otp` WRITE;
-/*!40000 ALTER TABLE `password_otp` DISABLE KEYS */
-;
-/*!40000 ALTER TABLE `password_otp` ENABLE KEYS */
-;
-UNLOCK TABLES;
+-- Bảng `password_otp` đã được loại bỏ: OTP quên mật khẩu nay lưu trong Redis (TTL tự hết hạn).
+-- Xem migration_fixes.sql để DROP bảng cũ trên DB đang chạy.
 
 --
 -- Table structure for table `permission`
@@ -544,6 +514,7 @@ CREATE TABLE `user` (
     `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
     `phone_number` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
     `point` double DEFAULT '0',
+    `transfer_pin` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
     PRIMARY KEY (`user_id`),
     UNIQUE KEY `user_id_UNIQUE` (`user_id`),
     UNIQUE KEY `username_UNIQUE` (`username`),
@@ -687,10 +658,16 @@ CREATE TABLE `chat_message` (
     `sender_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
     `recipient_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
     `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'TEXT',
+    `transfer_id` int DEFAULT NULL,
     `sent_at` datetime NOT NULL,
     `read_at` datetime DEFAULT NULL,
     PRIMARY KEY (`message_id`),
-    KEY `idx_chat_pair` (`sender_id`, `recipient_id`, `sent_at`),
+    KEY `idx_chat_pair` (
+        `sender_id`,
+        `recipient_id`,
+        `sent_at`
+    ),
     KEY `idx_chat_unread` (`recipient_id`, `read_at`),
     CONSTRAINT `fk_chat_sender` FOREIGN KEY (`sender_id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE,
     CONSTRAINT `fk_chat_recipient` FOREIGN KEY (`recipient_id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE
@@ -706,6 +683,44 @@ LOCK TABLES `chat_message` WRITE;
 /*!40000 ALTER TABLE `chat_message` DISABLE KEYS */
 ;
 /*!40000 ALTER TABLE `chat_message` ENABLE KEYS */
+;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `ticket_transfer`
+--
+
+DROP TABLE IF EXISTS `ticket_transfer`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */
+;
+/*!50503 SET character_set_client = utf8mb4 */
+;
+CREATE TABLE `ticket_transfer` (
+    `transfer_id` int NOT NULL AUTO_INCREMENT,
+    `booking_id` int NOT NULL,
+    `from_user_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `to_user_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `created_at` datetime NOT NULL,
+    `responded_at` datetime DEFAULT NULL,
+    PRIMARY KEY (`transfer_id`),
+    KEY `idx_transfer_recipient` (`to_user_id`, `status`),
+    KEY `idx_transfer_booking` (`booking_id`),
+    CONSTRAINT `fk_transfer_booking` FOREIGN KEY (`booking_id`) REFERENCES `booking` (`booking_id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_transfer_from` FOREIGN KEY (`from_user_id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_transfer_to` FOREIGN KEY (`to_user_id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */
+;
+
+--
+-- Dumping data for table `ticket_transfer`
+--
+
+LOCK TABLES `ticket_transfer` WRITE;
+/*!40000 ALTER TABLE `ticket_transfer` DISABLE KEYS */
+;
+/*!40000 ALTER TABLE `ticket_transfer` ENABLE KEYS */
 ;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */

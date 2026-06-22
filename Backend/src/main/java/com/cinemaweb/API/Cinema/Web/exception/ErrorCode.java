@@ -76,6 +76,16 @@ public enum ErrorCode {
     FRIEND_NOT_AUTHORIZED(7006, "Bạn không có quyền với quan hệ bạn bè này!", HttpStatus.FORBIDDEN),
     CHAT_NOT_FRIENDS(7007, "Chỉ có thể nhắn tin với bạn bè!", HttpStatus.FORBIDDEN),
     MESSAGE_EMPTY(7008, "Nội dung tin nhắn không được để trống!", HttpStatus.BAD_REQUEST),
+    TICKET_TRANSFER_NOT_FOUND(7009, "Lời mời chuyển nhượng vé không tồn tại!", HttpStatus.BAD_REQUEST),
+    TICKET_NOT_OWNER(7010, "Bạn không sở hữu vé này!", HttpStatus.FORBIDDEN),
+    TICKET_TRANSFER_NOT_FRIENDS(7011, "Chỉ có thể chuyển nhượng vé cho bạn bè!", HttpStatus.FORBIDDEN),
+    TICKET_SHOW_STARTED(7012, "Suất chiếu đã bắt đầu, không thể chuyển nhượng!", HttpStatus.BAD_REQUEST),
+    TICKET_TRANSFER_EXISTS(7013, "Vé này đang có một lời mời chuyển nhượng chờ xử lý!", HttpStatus.BAD_REQUEST),
+    TICKET_TRANSFER_SELF(7014, "Không thể tự chuyển nhượng vé cho chính mình!", HttpStatus.BAD_REQUEST),
+    TICKET_TRANSFER_NOT_AUTHORIZED(7015, "Bạn không có quyền với lời mời chuyển nhượng này!", HttpStatus.FORBIDDEN),
+    TICKET_PIN_NOT_SET(7016, "Bạn chưa thiết lập mã PIN chuyển nhượng!", HttpStatus.BAD_REQUEST),
+    TICKET_PIN_INVALID(7017, "Mã PIN không đúng!", HttpStatus.BAD_REQUEST),
+    TICKET_PIN_WRONG_CURRENT(7018, "Mã PIN hiện tại không đúng!", HttpStatus.BAD_REQUEST),
 
     // ─────────────── 8xxx: File Upload Errors ───────────────
     FILE_EMPTY(8001, "File tải lên không được để trống!", HttpStatus.BAD_REQUEST),

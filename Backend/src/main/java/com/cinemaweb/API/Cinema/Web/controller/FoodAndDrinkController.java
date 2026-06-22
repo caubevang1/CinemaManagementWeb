@@ -32,6 +32,7 @@ public class FoodAndDrinkController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> createFoodAndDrink(@RequestBody @Valid FoodAndDrinkRequest fdCreateRequest) {
         foodAndDrinkService.createFoodAndDrink(fdCreateRequest);
         return ApiResponse.<Void>builder().message("Food & drink has been created").build();

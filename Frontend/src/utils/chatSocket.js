@@ -1,9 +1,10 @@
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { DOMAIN_BE, LOCALSTORAGE_USER } from './constant';
-import { getLocalStorage } from './config';
+import { getLocalStorage, SwalConfig } from './config';
 import {
     setConnected, setTyping, setUserOnline, addMessage, applyReadReceipt,
+    updateTransferInMessages,
 } from '../redux/reducers/ChatReducer';
 
 let client = null;
@@ -39,6 +40,10 @@ export const connectChatSocket = (dispatch, userId) => {
                 const friendId = msg.senderId === myId ? msg.recipientId : msg.senderId;
                 const incoming = msg.senderId !== myId;
                 dispatch(addMessage({ friendId, message: msg, incoming }));
+                if (incoming && msg.type === 'TRANSFER') {
+                    const mv = msg.transfer?.movieName || 'phim';
+                    SwalConfig(`${msg.transfer?.fromUsername || 'Bạn bè'} muốn chuyển vé "${mv}" cho bạn`, 'info', false, 2500);
+                }
             });
 
             client.subscribe('/user/queue/typing', (frame) => {
@@ -57,6 +62,20 @@ export const connectChatSocket = (dispatch, userId) => {
                 const ev = safeParse(frame.body);
                 if (!ev) return;
                 dispatch(setUserOnline({ userId: ev.userId, online: ev.online }));
+            });
+
+            // Kết quả lời mời (accepted/declined/cancelled) → cập nhật bong bóng tin nhắn
+            client.subscribe('/user/queue/ticket-transfer-result', (frame) => {
+                const result = safeParse(frame.body);
+                if (!result) return;
+                dispatch(updateTransferInMessages(result));
+                if (result.status === 'ACCEPTED' && result.fromUserId === myId) {
+                    SwalConfig(`${result.toUsername} đã nhận vé "${result.movieName || ''}"`, 'success', false, 2500);
+                } else if (result.status === 'DECLINED' && result.fromUserId === myId) {
+                    SwalConfig(`${result.toUsername} đã từ chối nhận vé`, 'info', false, 2500);
+                }
+                // Báo cho danh sách vé tự nạp lại (đổi quyền sở hữu)
+                window.dispatchEvent(new CustomEvent('ticket-transfer-updated'));
             });
         },
         onWebSocketClose: () => dispatch(setConnected(false)),

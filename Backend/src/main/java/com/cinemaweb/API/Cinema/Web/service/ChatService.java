@@ -3,6 +3,7 @@ package com.cinemaweb.API.Cinema.Web.service;
 import com.cinemaweb.API.Cinema.Web.dto.request.ChatMessageRequest;
 import com.cinemaweb.API.Cinema.Web.dto.response.ChatMessageResponse;
 import com.cinemaweb.API.Cinema.Web.dto.response.ConversationSummaryResponse;
+import com.cinemaweb.API.Cinema.Web.dto.response.TicketTransferResponse;
 import com.cinemaweb.API.Cinema.Web.entity.Message;
 import com.cinemaweb.API.Cinema.Web.entity.User;
 import com.cinemaweb.API.Cinema.Web.enums.FriendshipStatus;
@@ -38,6 +39,12 @@ public class ChatService {
     @Autowired
     private PresenceService presenceService;
 
+    @Autowired
+    private TicketTransferService ticketTransferService;
+
+    private static final String TYPE_TEXT = "TEXT";
+    private static final String TYPE_TRANSFER = "TRANSFER";
+
     /** Lưu tin nhắn sau khi xác thực hai người là bạn bè. */
     @Transactional
     public ChatMessageResponse send(String senderId, ChatMessageRequest request) {
@@ -57,6 +64,28 @@ public class ChatService {
                 .sender(sender)
                 .recipient(recipient)
                 .content(request.getContent())
+                .type(TYPE_TEXT)
+                .sentAt(LocalDateTime.now())
+                .build();
+
+        return toResponse(messageRepository.save(message));
+    }
+
+    /** Tạo một tin nhắn loại TRANSFER (lời mời chuyển nhượng vé) trong cuộc trò chuyện. */
+    @Transactional
+    public ChatMessageResponse createTransferMessage(String senderId, String recipientId,
+                                                     TicketTransferResponse transfer) {
+        User sender = userRepository.findById(senderId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTS));
+        User recipient = userRepository.findById(recipientId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTS));
+
+        Message message = Message.builder()
+                .sender(sender)
+                .recipient(recipient)
+                .content("🎟 Lời mời chuyển nhượng vé")
+                .type(TYPE_TRANSFER)
+                .transferId(transfer.getId())
                 .sentAt(LocalDateTime.now())
                 .build();
 
@@ -129,6 +158,11 @@ public class ChatService {
     }
 
     private ChatMessageResponse toResponse(Message m) {
+        String type = m.getType() != null ? m.getType() : TYPE_TEXT;
+        TicketTransferResponse transfer = null;
+        if (TYPE_TRANSFER.equals(type) && m.getTransferId() != null)
+            transfer = ticketTransferService.getResponse(m.getTransferId());
+
         return ChatMessageResponse.builder()
                 .id(m.getId())
                 .senderId(m.getSender().getID())
@@ -136,6 +170,8 @@ public class ChatService {
                 .content(m.getContent())
                 .sentAt(m.getSentAt())
                 .readAt(m.getReadAt())
+                .type(type)
+                .transfer(transfer)
                 .build();
     }
 

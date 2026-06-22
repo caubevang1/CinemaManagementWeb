@@ -8,7 +8,7 @@ const initialState = {
     unreadByFriend: {},         // { [friendId]: number }
     totalUnread: 0,
     typingByFriend: {},         // { [friendId]: boolean }
-    openWindows: [],            // [{ userId, username, avatar }]
+    activeConversationId: null, // friendId của cuộc trò chuyện đang mở trên trang Messages
 }
 
 const recomputeTotal = (state) => {
@@ -54,8 +54,7 @@ const ChatReducer = createSlice({
             if (message.id && state.messagesByFriend[friendId].some(m => m.id === message.id)) return;
             state.messagesByFriend[friendId].push(message);
 
-            const isOpen = state.openWindows.some(w => w.userId === friendId);
-            if (incoming && !isOpen) {
+            if (incoming && friendId !== state.activeConversationId) {
                 state.unreadByFriend[friendId] = (state.unreadByFriend[friendId] || 0) + 1;
                 recomputeTotal(state);
             }
@@ -69,20 +68,20 @@ const ChatReducer = createSlice({
                 if (m.recipientId === byUserId && !m.readAt) m.readAt = readAt;
             });
         },
-        openWindow: (state, { payload }) => {
-            if (!state.openWindows.some(w => w.userId === payload.userId)) {
-                state.openWindows.push(payload);
-            }
-            // mở cửa sổ ⇒ coi như đã đọc
-            state.unreadByFriend[payload.userId] = 0;
-            recomputeTotal(state);
-        },
-        closeWindow: (state, { payload }) => {
-            state.openWindows = state.openWindows.filter(w => w.userId !== payload);
+        setActiveConversation: (state, { payload }) => {
+            state.activeConversationId = payload;
         },
         clearUnread: (state, { payload }) => {
             state.unreadByFriend[payload] = 0;
             recomputeTotal(state);
+        },
+        // ── Chuyển nhượng vé: cập nhật transfer nhúng trong tin nhắn loại TRANSFER ──
+        updateTransferInMessages: (state, { payload }) => {
+            Object.values(state.messagesByFriend).forEach((list) => {
+                list.forEach((m) => {
+                    if (m.transfer && m.transfer.id === payload.id) m.transfer = payload;
+                });
+            });
         },
         resetChat: () => initialState,
     },
@@ -98,9 +97,9 @@ export const {
     setMessages,
     addMessage,
     applyReadReceipt,
-    openWindow,
-    closeWindow,
+    setActiveConversation,
     clearUnread,
+    updateTransferInMessages,
     resetChat,
 } = ChatReducer.actions;
 

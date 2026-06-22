@@ -23,3 +23,7 @@ export const resetPasswordWithOtp = (otp, data) => http.post(`/auth/reset-passwo
 export const LayThongTinBooking = () => http.get('/booking/myBooking')
 
 export const TimKiemNguoiDung = (q) => http.get('/users/search', { params: { q } })
+
+// Đặt/đổi mã PIN chuyển nhượng (currentPin bỏ trống khi đặt lần đầu)
+export const CapNhatMaPinChuyenNhuong = ({ currentPin, newPin }) =>
+    http.post('/users/transfer-pin', { currentPin, newPin })

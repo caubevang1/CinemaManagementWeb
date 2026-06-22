@@ -8,6 +8,7 @@ import com.cinemaweb.API.Cinema.Web.dto.response.BookingResponse;
 import com.cinemaweb.API.Cinema.Web.dto.response.SeatResponse;
 import com.cinemaweb.API.Cinema.Web.entity.*;
 import com.cinemaweb.API.Cinema.Web.enums.SeatState;
+import com.cinemaweb.API.Cinema.Web.enums.TicketTransferStatus;
 import com.cinemaweb.API.Cinema.Web.exception.AppException;
 import com.cinemaweb.API.Cinema.Web.exception.ErrorCode;
 import com.cinemaweb.API.Cinema.Web.mapper.BookingFoodAndDrinkMapper;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -56,6 +58,9 @@ public class BookingService {
     @Autowired
     private FoodAndDrinkRepository foodAndDrinkRepository;
 
+    @Autowired
+    private TicketTransferRepository ticketTransferRepository;
+
     public BookingResponse getBooking(String bookingId) {
         int bookingIdInt = Integer.parseInt(bookingId);
         List<BookingFoodAndDrinkResponse> listBookingFoodAndDrinks = new ArrayList<>();
@@ -78,13 +83,26 @@ public class BookingService {
     public List<BookingResponse> getAllMyBooking() {
         var context = SecurityContextHolder.getContext();
         String userId = context.getAuthentication().getName();
-        var bookings =  bookingRepository.findAllByUser_ID(userId)
-                .orElseThrow(() -> new RuntimeException("User chua tung co hoa don nao!"));
+        List<Booking> owned = bookingRepository.findAllByUser_ID(userId).orElse(List.of());
 
-        List<Integer> bookingIds = bookings.stream().map(Booking::getBookingId).toList();
-        if (bookingIds.isEmpty()) {
+        // Vé đã chuyển nhượng đi (ACCEPTED): vẫn giữ bản ghi cho người gửi, gắn nhãn người nhận.
+        Map<Integer, String> transferredTo = new HashMap<>();
+        List<Booking> transferred = new ArrayList<>();
+        for (TicketTransfer t : ticketTransferRepository.findByFromUser_IDAndStatus(
+                userId, TicketTransferStatus.ACCEPTED)) {
+            Booking b = t.getBooking();
+            if (b == null) continue;
+            transferredTo.put(b.getBookingId(), t.getToUser().getUsername());
+            transferred.add(b);
+        }
+
+        List<Booking> all = new ArrayList<>(owned);
+        all.addAll(transferred);
+        if (all.isEmpty()) {
             return new ArrayList<>();
         }
+
+        List<Integer> bookingIds = all.stream().map(Booking::getBookingId).toList();
 
         // Batch load: 1 query cho seats, 1 query cho food&drink (thay vì N+1 per booking)
         Map<Integer, List<BookingSeat>> seatsByBooking =
@@ -95,13 +113,14 @@ public class BookingService {
                         .collect(Collectors.groupingBy(bf -> bf.getBooking().getBookingId()));
 
         List<BookingResponse> bookingResponses = new ArrayList<>();
-        for (Booking booking : bookings) {
+        for (Booking booking : all) {
             int bookingId = booking.getBookingId();
             BookingResponse response = bookingMapper.toBookingResponse(booking);
             response.setSeats(seatsByBooking.getOrDefault(bookingId, List.of()).stream()
                     .map(bookingSeatMapper::toBookingSeatResponse).toList());
             response.setFoodAndDrinks(bookingFoodAndDrinkMapper.toListBookingFoodAndDrinks(
                     foodsByBooking.getOrDefault(bookingId, List.of())));
+            response.setTransferredToUsername(transferredTo.get(bookingId));
             bookingResponses.add(response);
         }
         return bookingResponses;

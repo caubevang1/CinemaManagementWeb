@@ -24,4 +24,5 @@ public class UserResponse {
     String avatar;
     double point;
     Set<RoleResponse> roles;
+    boolean hasTransferPin;
 }

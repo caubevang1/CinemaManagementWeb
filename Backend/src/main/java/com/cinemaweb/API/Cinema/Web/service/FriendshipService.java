@@ -56,11 +56,10 @@ public class FriendshipService {
         return toResponse(friendshipRepository.save(friendship), currentUserId());
     }
 
-    public FriendshipResponse declineRequest(int friendshipId) {
+    public void declineRequest(int friendshipId) {
+        // Từ chối = xóa hẳn lời mời, đưa về trạng thái ban đầu (có thể kết bạn lại sau).
         Friendship friendship = getPendingForAddressee(friendshipId);
-        friendship.setStatus(FriendshipStatus.DECLINED);
-        friendship.setRespondedAt(LocalDateTime.now());
-        return toResponse(friendshipRepository.save(friendship), currentUserId());
+        friendshipRepository.delete(friendship);
     }
 
     public void unfriend(int friendshipId) {

@@ -35,6 +35,14 @@ public class Message {
     @Column(name = "content", columnDefinition = "TEXT")
     String content;
 
+    // "TEXT" (tin thường) hoặc "TRANSFER" (lời mời chuyển nhượng vé).
+    @Column(name = "type")
+    String type;
+
+    // Khi type = TRANSFER: id của TicketTransfer liên kết.
+    @Column(name = "transfer_id")
+    Integer transferId;
+
     @Column(name = "sent_at")
     LocalDateTime sentAt;
 

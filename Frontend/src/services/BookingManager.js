@@ -29,3 +29,10 @@ export const LayThongTinFoodAndDrink = () => http.get(`foodanddrink`)
 export const LayThongTinFoodAndDrinkChiTiet = (foodAndDrinkId) => http.get(`foodanddrink/${foodAndDrinkId}`)
 
 export const DatFoodAndDrink = (data) => http.post(`bookingFoodAndDrink`, data)
+
+// Admin: quản lý combo (đồ ăn/thức uống) theo rạp
+export const ThemFoodAndDrink = (data) => http.post(`foodanddrink`, data)
+
+export const CapNhatFoodAndDrink = (id, data) => http.put(`foodanddrink/${id}`, data)
+
+export const XoaFoodAndDrink = (id) => http.delete(`foodanddrink/${id}`)

@@ -1,9 +1,11 @@
 package com.cinemaweb.API.Cinema.Web.controller;
 
 import com.cinemaweb.API.Cinema.Web.dto.request.PointUpdateRequest;
+import com.cinemaweb.API.Cinema.Web.dto.request.SetTransferPinRequest;
 import com.cinemaweb.API.Cinema.Web.dto.request.UserCreationRequest;
 import com.cinemaweb.API.Cinema.Web.dto.request.UserUpdateRequest;
 import com.cinemaweb.API.Cinema.Web.dto.response.ApiResponse;
+import com.cinemaweb.API.Cinema.Web.dto.response.FriendSearchResponse;
 import com.cinemaweb.API.Cinema.Web.dto.response.PointUpdateResponse;
 import com.cinemaweb.API.Cinema.Web.dto.response.UserResponse;
 import com.cinemaweb.API.Cinema.Web.service.UserService;
@@ -49,10 +51,16 @@ public class UserController {
     }
 
     @GetMapping("/search")
-    public ApiResponse<List<UserResponse>> search(@RequestParam("q") String q) {
-        return ApiResponse.<List<UserResponse>>builder()
+    public ApiResponse<List<FriendSearchResponse>> search(@RequestParam("q") String q) {
+        return ApiResponse.<List<FriendSearchResponse>>builder()
                 .body(userService.searchUsers(q))
                 .build();
+    }
+
+    @PostMapping("/transfer-pin")
+    public ApiResponse<Void> setTransferPin(@RequestBody @Valid SetTransferPinRequest request) {
+        userService.setTransferPin(request);
+        return ApiResponse.<Void>builder().message("Đã cập nhật mã PIN chuyển nhượng").build();
     }
 
     @GetMapping("/{userId}")

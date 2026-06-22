@@ -7,6 +7,7 @@ import BookingReducer from "./reducers/BookingReducer";
 import RoomReducer from "./reducers/RoomReducer";
 import ScheduleReducer from "./reducers/ScheduleReducer";
 import ChatReducer from "./reducers/ChatReducer";
+import FoodComboReducer from "./reducers/FoodComboReducer";
 
 export const store = configureStore({
     reducer: {
@@ -18,6 +19,7 @@ export const store = configureStore({
         RoomReducer,
         ScheduleReducer,
         ChatReducer,
+        FoodComboReducer,
     }
 })
 

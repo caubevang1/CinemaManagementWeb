@@ -5,11 +5,9 @@ import com.cinemaweb.API.Cinema.Web.dto.request.*;
 import com.cinemaweb.API.Cinema.Web.dto.response.IntrospectResponse;
 import com.cinemaweb.API.Cinema.Web.dto.response.PasswordResetResponse;
 import com.cinemaweb.API.Cinema.Web.dto.response.TokenResult;
-import com.cinemaweb.API.Cinema.Web.entity.PasswordOTP;
 import com.cinemaweb.API.Cinema.Web.entity.User;
 import com.cinemaweb.API.Cinema.Web.exception.AppException;
 import com.cinemaweb.API.Cinema.Web.exception.ErrorCode;
-import com.cinemaweb.API.Cinema.Web.repository.PasswordOtpRepository;
 import com.cinemaweb.API.Cinema.Web.repository.UserRepository;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
@@ -30,7 +28,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.text.ParseException;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -45,7 +42,6 @@ public class AuthenticationService {
 
     UserRepository userRepository;
     EmailService emailService;
-    PasswordOtpRepository passwordOtpRepository;
     UserService userService;
     StringRedisTemplate redisTemplate;
 
@@ -54,6 +50,13 @@ public class AuthenticationService {
     static final String ACCESS_BLACKLIST_PREFIX = "blacklist_token:"; // blacklist_token:{jti}
     static final String REFRESH_ROTATED_PREFIX = "refresh_rotated:"; // refresh_rotated:{userId}:{oldJti} -> refresh token mới
     static final String ROTATION_PENDING = "PENDING"; // marker khi winner đang rotate
+
+    // OTP quên mật khẩu lưu trong Redis (tự hết hạn theo TTL, dùng một lần bằng DEL).
+    static final String PWD_OTP_PREFIX = "pwd-otp:";           // pwd-otp:{token} -> userId
+    static final String PWD_OTP_USER_PREFIX = "pwd-otp-user:"; // pwd-otp-user:{userId} -> token hiện hành (để vô hiệu cái cũ)
+    static final String PWD_OTP_CD_PREFIX = "pwd-otp-cd:";     // pwd-otp-cd:{userId} -> cooldown chống spam gửi lại
+    static final long PWD_OTP_TTL = 300;    // 5 phút hiệu lực OTP
+    static final long PWD_OTP_CD_TTL = 90;  // 90s chống spam gửi lại (khớp WAIT_OTP cũ)
 
     // Chống false-positive khi nhiều request refresh cùng token đến đồng thời
     static final long ROTATION_POLL_MAX_MS = 500;
@@ -143,65 +146,59 @@ public class AuthenticationService {
                 .build();
     }
 
-    @Transactional(rollbackFor = Exception.class)
     public String getPasswordToken(String email) {
         User user = userRepository.findByEmail(email).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTS));
+        String userId = user.getID();
 
-        if (passwordOtpRepository.countOtp(user.getID()) > 0) {
+        // Chống spam gửi lại: còn cooldown thì từ chối (khớp WAIT_OTP cũ, INTERVAL 1.5 phút).
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(PWD_OTP_CD_PREFIX + userId))) {
             throw new AppException(ErrorCode.WAIT_OTP);
         }
 
+        String token = UUID.randomUUID().toString();
 
-        passwordOtpRepository.invalidateOtp(user.getID());
-        passwordOtpRepository.flush();
+        // Gửi mail TRƯỚC khi ghi Redis: nếu MailException ném ra (xử lý ở GlobalExceptionHandler)
+        // thì chưa có key nào được ghi -> tương đương rollback của bản @Transactional cũ.
+        emailService.sendResetPasswordOtp(user, token);
 
-        // Ba mốc thời gian OTP (giữ nhất quán):
-        //  - TTL hiệu lực OTP: 5 phút (đủ để nhận email và nhập).
-        //  - Chống spam gửi lại: 90s (countOtp dùng INTERVAL 1.5 MINUTE, khớp WAIT_OTP).
-        //  - Dọn OTP hết hạn: scheduler chạy mỗi 5 phút (ScheduledTasks).
-        PasswordOTP passwordOTP = PasswordOTP.builder()
-                .OTP(UUID.randomUUID().toString())
-                .user(user)
-                .expiryTime(new Date(Instant.now().plus(5, ChronoUnit.MINUTES).toEpochMilli()))
-                .valid(true)
-                .build();
+        // Vô hiệu OTP cũ của user (nếu còn) trước khi cấp cái mới.
+        String oldToken = redisTemplate.opsForValue().get(PWD_OTP_USER_PREFIX + userId);
+        if (oldToken != null) {
+            redisTemplate.delete(PWD_OTP_PREFIX + oldToken);
+        }
 
-        passwordOtpRepository.save(passwordOTP);
-        emailService.sendResetPasswordOtp(user, passwordOTP);
+        // OTP tự hết hạn theo TTL (5 phút), không cần scheduler dọn nữa.
+        redisTemplate.opsForValue().set(PWD_OTP_PREFIX + token, userId, PWD_OTP_TTL, TimeUnit.SECONDS);
+        redisTemplate.opsForValue().set(PWD_OTP_USER_PREFIX + userId, token, PWD_OTP_TTL, TimeUnit.SECONDS);
+        redisTemplate.opsForValue().set(PWD_OTP_CD_PREFIX + userId, "1", PWD_OTP_CD_TTL, TimeUnit.SECONDS);
 
         return "Please check your email to get OTP used to reset your password!";
-
-        // sendMail có thể ném ra MailException hãy xử lý trong globalExceptionHandler
     }
 
 
     @Transactional(rollbackFor = Exception.class)
     public PasswordResetResponse resetPassword(PasswordResetRequest request, String OTP) {
-        PasswordOTP passwordOTP = verifyOTP(OTP);
+        String userId = redisTemplate.opsForValue().get(PWD_OTP_PREFIX + OTP);
+        if (userId == null) {
+            throw new AppException(ErrorCode.INVALID_OTP);
+        }
 
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
             throw new AppException(ErrorCode.CONFIRM_PASSWORD_FAIL);
         }
 
-        User user = userService.resetPassword(passwordOTP.getUser(), request.getNewPassword());
-        passwordOTP.setValid(false);
-        passwordOtpRepository.save(passwordOTP);
+        User target = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTS));
+        User user = userService.resetPassword(target, request.getNewPassword());
+
+        // Dùng một lần: xóa OTP + index + cooldown sau khi đổi mật khẩu thành công.
+        redisTemplate.delete(PWD_OTP_PREFIX + OTP);
+        redisTemplate.delete(PWD_OTP_USER_PREFIX + userId);
+        redisTemplate.delete(PWD_OTP_CD_PREFIX + userId);
 
         return PasswordResetResponse.builder()
                 .token(generateAccessToken(user))
                 .build();
-    }
-
-
-    private PasswordOTP verifyOTP(String OTP) {
-        PasswordOTP passwordOTP = passwordOtpRepository.findById(OTP)
-                .orElseThrow(() -> new AppException(ErrorCode.INVALID_OTP));
-
-        if (passwordOTP.getExpiryTime().after(new Date()) && passwordOTP.isValid()) {
-            return passwordOTP;
-        }
-
-        throw new AppException(ErrorCode.INVALID_OTP);
     }
 
 

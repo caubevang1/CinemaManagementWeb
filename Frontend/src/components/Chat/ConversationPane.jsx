@@ -1,18 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { CloseOutlined, SendOutlined } from '@ant-design/icons';
+import { SendOutlined } from '@ant-design/icons';
 import UserAvatar from '../UserAvatar';
+import TicketOfferCard from './TicketOfferCard';
 import { LayLichSuChat } from '../../services/ChatService';
-import { setMessages, clearUnread, closeWindow } from '../../redux/reducers/ChatReducer';
+import { setMessages, clearUnread } from '../../redux/reducers/ChatReducer';
 import { sendChatMessage, sendTypingSignal, sendReadSignal } from '../../utils/chatSocket';
 
 const formatTime = (iso) => {
     if (!iso) return '';
-    const d = new Date(iso);
-    return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 };
 
-const ChatWindow = ({ friend, myId }) => {
+const ConversationPane = ({ friend, myId }) => {
     const dispatch = useDispatch();
     const messages = useSelector((s) => s.ChatReducer.messagesByFriend[friend.userId]) || [];
     const onlineIds = useSelector((s) => s.ChatReducer.onlineIds);
@@ -24,9 +24,10 @@ const ChatWindow = ({ friend, myId }) => {
 
     const online = onlineIds.includes(friend.userId);
 
-    // Tải lịch sử khi mở cửa sổ.
+    // Tải lịch sử khi chọn người bạn.
     useEffect(() => {
         let active = true;
+        setText('');
         (async () => {
             try {
                 const res = await LayLichSuChat(friend.userId);
@@ -40,7 +41,7 @@ const ChatWindow = ({ friend, myId }) => {
         return () => { active = false; };
     }, [friend.userId, dispatch]);
 
-    // Cuộn xuống cuối khi có tin mới; đánh dấu đã đọc tin đến.
+    // Cuộn xuống cuối + đánh dấu đã đọc tin đến.
     useEffect(() => {
         if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
         const last = messages[messages.length - 1];
@@ -60,36 +61,33 @@ const ChatWindow = ({ friend, myId }) => {
     const handleSend = () => {
         const content = text.trim();
         if (!content) return;
-        const ok = sendChatMessage(friend.userId, content);
-        if (ok) {
+        if (sendChatMessage(friend.userId, content)) {
             setText('');
             sendTypingSignal(friend.userId, false);
         }
     };
 
     return (
-        <div className="chat-window">
-            <div className="chat-window__header">
-                <div className="chat-window__peer">
-                    <div className="chat-window__avatar-wrap">
-                        <UserAvatar size={32} avatar={friend.avatar} name={friend.username} />
-                        <span className={`chat-dot ${online ? 'chat-dot--on' : ''}`} />
-                    </div>
-                    <div className="chat-window__meta">
-                        <span className="chat-window__name">{friend.username}</span>
-                        <span className="chat-window__status">{online ? 'Đang hoạt động' : 'Ngoại tuyến'}</span>
-                    </div>
+        <div className="conversation-pane">
+            <div className="conversation-pane__header">
+                <div className="chat-window__avatar-wrap">
+                    <UserAvatar size={40} avatar={friend.avatar} name={friend.username} />
+                    <span className={`chat-dot ${online ? 'chat-dot--on' : ''}`} />
                 </div>
-                <button className="chat-window__close" onClick={() => dispatch(closeWindow(friend.userId))}>
-                    <CloseOutlined />
-                </button>
+                <div className="conversation-pane__meta">
+                    <span className="conversation-pane__name">{friend.username}</span>
+                    <span className="conversation-pane__status">{online ? 'Đang hoạt động' : 'Ngoại tuyến'}</span>
+                </div>
             </div>
 
-            <div className="chat-window__body" ref={listRef}>
+            <div className="conversation-pane__body" ref={listRef}>
                 {messages.length === 0 ? (
                     <p className="chat-window__empty">Hãy bắt đầu cuộc trò chuyện 👋</p>
                 ) : (
                     messages.map((m, idx) => {
+                        if (m.type === 'TRANSFER') {
+                            return <TicketOfferCard key={m.id ?? idx} transfer={m.transfer} myId={myId} />;
+                        }
                         const mine = m.senderId === myId;
                         return (
                             <div key={m.id ?? idx} className={`chat-msg ${mine ? 'chat-msg--mine' : ''}`}>
@@ -105,7 +103,7 @@ const ChatWindow = ({ friend, myId }) => {
                 {isTyping && <div className="chat-typing">đang nhập…</div>}
             </div>
 
-            <div className="chat-window__input">
+            <div className="conversation-pane__input">
                 <input
                     type="text"
                     value={text}
@@ -121,4 +119,4 @@ const ChatWindow = ({ friend, myId }) => {
     );
 };
 
-export default ChatWindow;
+export default ConversationPane;

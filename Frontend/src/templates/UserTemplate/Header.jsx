@@ -2,21 +2,24 @@ import React, { useEffect, useState, useRef } from 'react';
 import Swal from 'sweetalert2';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCircleUser, faXmark, faArrowRightFromBracket, faUser } from '@fortawesome/free-solid-svg-icons';
-import { Drawer, Space, Tooltip, Dropdown, Menu } from 'antd';
+import { faCircleUser, faXmark, faArrowRightFromBracket, faUser, faKey } from '@fortawesome/free-solid-svg-icons';
+import { Drawer, Space, Tooltip, Dropdown, Menu, Badge } from 'antd';
 import { getLocalStorage, removeLocalStorage, SwalConfig } from '../../utils/config';
 import { useDispatch, useSelector } from 'react-redux';
 import { callApiThongTinNguoiDung, setStatusLogin } from '../../redux/reducers/UserReducer';
 import { LOCALSTORAGE_USER } from '../../utils/constant';
 import popcornImg from '../../assets/img/popcorn2.png';
 import UserAvatar from '../../components/UserAvatar';
+import TransferPinModal from '../../components/TransferPinModal';
 
 const Header = () => {
     const navBarRef = useRef(null);
     const { isLogin, thongTinNguoiDung } = useSelector(state => state.UserReducer);
+    const totalUnread = useSelector(state => state.ChatReducer.totalUnread);
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
+    const [pinModalOpen, setPinModalOpen] = useState(false);
     const user = getLocalStorage(LOCALSTORAGE_USER);
 
     useEffect(() => {
@@ -73,6 +76,9 @@ const Header = () => {
                 <Menu.Item key="1" icon={<FontAwesomeIcon icon={faUser} />} onClick={() => navigate('/inforUser')}>
                     Thông tin tài khoản
                 </Menu.Item>
+                <Menu.Item key="pin" icon={<FontAwesomeIcon icon={faKey} />} onClick={() => setPinModalOpen(true)}>
+                    Mã PIN
+                </Menu.Item>
                 <Menu.Item key="2" icon={<FontAwesomeIcon icon={faArrowRightFromBracket} />} onClick={handleLogout}>
                     Đăng xuất
                 </Menu.Item>
@@ -101,6 +107,7 @@ const Header = () => {
 
     return (
         <>
+            <TransferPinModal open={pinModalOpen} onClose={() => setPinModalOpen(false)} />
             <Drawer
                 title="Nhóm 13"
                 placement='left'
@@ -141,6 +148,13 @@ const Header = () => {
                     <li className="mr-3">
                         <NavLink className="block no-underline text-black font-medium text-base hover:text-red-600 hover:text-underline py-2 px-4" to='news'>Tin tức</NavLink>
                     </li>
+                    {isLogin && (
+                        <li className="mr-3">
+                            <NavLink className="block no-underline text-black font-medium text-base hover:text-red-600 hover:text-underline py-2 px-4" to='messages' onClick={onClose}>
+                                <Badge count={totalUnread} size="small" offset={[10, 0]}>Bạn bè</Badge>
+                            </NavLink>
+                        </li>
+                    )}
                 </ul>
             </Drawer>
 
@@ -171,9 +185,13 @@ const Header = () => {
                             <li className="mr-3">
                                 <NavLink className="inline-block no-underline text-black font-medium md:text-base hover:text-red-600 hover:text-underline py-2 px-4" to='news'>Tin tức</NavLink>
                             </li>
-                            <li className="mr-3">
-                                <NavLink className="inline-block no-underline text-black font-medium md:text-base hover:text-red-600 hover:text-underline py-2 px-4" to='aboutapp'>Ứng dụng</NavLink>
-                            </li>
+                            {isLogin && (
+                                <li className="mr-3">
+                                    <NavLink className="inline-block no-underline text-black font-medium md:text-base hover:text-red-600 hover:text-underline py-2 px-4" to='messages'>
+                                        <Badge count={totalUnread} size="small" offset={[10, 0]}>Bạn bè</Badge>
+                                    </NavLink>
+                                </li>
+                            )}
                         </ul>
                         <div className='flex text-gray-500'>
                             {isLogin ? (

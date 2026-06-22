@@ -34,6 +34,10 @@ public class User {
     String phoneNumber;
     Double point;
 
+    // Mã PIN chuyển nhượng vé (đã hash), người dùng tự đặt, xác nhận mỗi lần chuyển.
+    @Column(name = "transfer_pin")
+    String transferPin;
+
     @ManyToMany
     @JoinTable(
             name = "user_roles",

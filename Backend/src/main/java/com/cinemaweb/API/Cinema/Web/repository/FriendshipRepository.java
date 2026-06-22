@@ -23,6 +23,10 @@ public interface FriendshipRepository extends JpaRepository<Friendship, Integer>
     List<Friendship> findAllAcceptedOf(@Param("userId") String userId,
                                        @Param("status") FriendshipStatus status);
 
+    // Mọi quan hệ (PENDING/ACCEPTED) liên quan tới user, bất kể chiều — dùng cho tìm bạn.
+    @Query("SELECT f FROM Friendship f WHERE f.requester.ID = :userId OR f.addressee.ID = :userId")
+    List<Friendship> findAllInvolving(@Param("userId") String userId);
+
     // Hai người đã là bạn bè (ACCEPTED), bất kể chiều gửi lời mời.
     @Query("SELECT COUNT(f) > 0 FROM Friendship f WHERE f.status = " +
             "com.cinemaweb.API.Cinema.Web.enums.FriendshipStatus.ACCEPTED " +

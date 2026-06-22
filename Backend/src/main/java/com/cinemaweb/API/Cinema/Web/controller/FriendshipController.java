@@ -47,10 +47,10 @@ public class FriendshipController {
     }
 
     @PostMapping("/{id}/decline")
-    public ApiResponse<FriendshipResponse> decline(@PathVariable int id) {
-        return ApiResponse.<FriendshipResponse>builder()
+    public ApiResponse<Void> decline(@PathVariable int id) {
+        friendshipService.declineRequest(id);
+        return ApiResponse.<Void>builder()
                 .message("Friend request declined")
-                .body(friendshipService.declineRequest(id))
                 .build();
     }
 

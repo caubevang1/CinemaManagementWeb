@@ -59,8 +59,8 @@
 
 }
 
-// Carousel Modal
-.ant-modal {
+// Carousel / trailer modal (chỉ áp dụng cho modal xem trailer, không ảnh hưởng modal khác)
+.trailer-modal {
     width: 900px !important;
 
     .ant-modal-content {

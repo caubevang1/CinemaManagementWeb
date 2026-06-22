@@ -1,16 +1,20 @@
 package com.cinemaweb.API.Cinema.Web.service;
 
 import com.cinemaweb.API.Cinema.Web.dto.request.PointUpdateRequest;
+import com.cinemaweb.API.Cinema.Web.dto.request.SetTransferPinRequest;
 import com.cinemaweb.API.Cinema.Web.dto.request.UserCreationRequest;
 import com.cinemaweb.API.Cinema.Web.dto.request.UserUpdateRequest;
+import com.cinemaweb.API.Cinema.Web.dto.response.FriendSearchResponse;
 import com.cinemaweb.API.Cinema.Web.dto.response.PointUpdateResponse;
 import com.cinemaweb.API.Cinema.Web.dto.response.UserResponse;
+import com.cinemaweb.API.Cinema.Web.entity.Friendship;
 import com.cinemaweb.API.Cinema.Web.entity.User;
+import com.cinemaweb.API.Cinema.Web.enums.FriendshipStatus;
 import com.cinemaweb.API.Cinema.Web.enums.Roles;
 import com.cinemaweb.API.Cinema.Web.exception.AppException;
 import com.cinemaweb.API.Cinema.Web.exception.ErrorCode;
 import com.cinemaweb.API.Cinema.Web.mapper.UserMapper;
-import com.cinemaweb.API.Cinema.Web.repository.PasswordOtpRepository;
+import com.cinemaweb.API.Cinema.Web.repository.FriendshipRepository;
 import com.cinemaweb.API.Cinema.Web.repository.RoleRepository;
 import com.cinemaweb.API.Cinema.Web.repository.UserRepository;
 import lombok.AccessLevel;
@@ -21,8 +25,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -34,8 +42,8 @@ public class UserService {
     PasswordEncoder passwordEncoder;
     RoleRepository roleRepository;
     EmailService emailService;
-    PasswordOtpRepository passwordTokenRepository;
     CloudinaryService cloudinaryService;
+    FriendshipRepository friendshipRepository;
 
     public UserResponse getById(String id) {
         return userMapper.toUserResponse(userRepository.findById(id)
@@ -52,14 +60,41 @@ public class UserService {
         return users.stream().map(userMapper::toUserResponse).toList();
     }
 
-    public List<UserResponse> searchUsers(String q) {
+    public List<FriendSearchResponse> searchUsers(String q) {
         if (q == null || q.isBlank())
             return List.of();
         String selfId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userRepository.searchUsers(q.trim(), selfId).stream()
-                .limit(20)
-                .map(userMapper::toUserResponse)
-                .toList();
+
+        // Trạng thái quan hệ với từng người (other user id -> status).
+        Map<String, FriendshipStatus> statusByUser = new HashMap<>();
+        for (Friendship f : friendshipRepository.findAllInvolving(selfId)) {
+            String otherId = f.getRequester().getID().equals(selfId)
+                    ? f.getAddressee().getID() : f.getRequester().getID();
+            statusByUser.put(otherId, f.getStatus());
+        }
+
+        List<FriendSearchResponse> result = new ArrayList<>();
+        for (User u : userRepository.searchUsers(q.trim(), selfId)) {
+            FriendshipStatus status = statusByUser.get(u.getID());
+            String statusStr = status == FriendshipStatus.ACCEPTED ? "ACCEPTED"
+                    : status == FriendshipStatus.PENDING ? "PENDING" : "NONE";
+            result.add(FriendSearchResponse.builder()
+                    .id(u.getID())
+                    .username(u.getUsername())
+                    .firstName(u.getFirstName())
+                    .lastName(u.getLastName())
+                    .avatar(u.getAvatar())
+                    .email(u.getEmail())
+                    .friendshipStatus(statusStr)
+                    .build());
+        }
+        // Sắp xếp: bạn bè (ACCEPTED) trước, rồi PENDING, cuối là NONE.
+        result.sort(Comparator.comparingInt(r -> switch (r.getFriendshipStatus()) {
+            case "ACCEPTED" -> 0;
+            case "PENDING" -> 1;
+            default -> 2;
+        }));
+        return result.stream().limit(20).toList();
     }
 
 
@@ -67,7 +102,25 @@ public class UserService {
         var context = SecurityContextHolder.getContext();
         String id = context.getAuthentication().getName();
         User user = userRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTS));
-        return userMapper.toUserResponse(user);
+        UserResponse response = userMapper.toUserResponse(user);
+        response.setHasTransferPin(user.getTransferPin() != null);
+        return response;
+    }
+
+    /** Đặt hoặc đổi mã PIN chuyển nhượng (kiểu ngân hàng). */
+    public void setTransferPin(SetTransferPinRequest request) {
+        String id = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTS));
+
+        // Đã có PIN -> phải nhập đúng PIN hiện tại mới được đổi.
+        if (user.getTransferPin() != null) {
+            if (request.getCurrentPin() == null
+                    || !passwordEncoder.matches(request.getCurrentPin(), user.getTransferPin()))
+                throw new AppException(ErrorCode.TICKET_PIN_WRONG_CURRENT);
+        }
+
+        user.setTransferPin(passwordEncoder.encode(request.getNewPin()));
+        userRepository.save(user);
     }
 
     public UserResponse create(UserCreationRequest request) {

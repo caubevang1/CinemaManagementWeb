@@ -1,7 +1,6 @@
 package com.cinemaweb.API.Cinema.Web.scheduler;
 
 
-import com.cinemaweb.API.Cinema.Web.repository.PasswordOtpRepository;
 import com.cinemaweb.API.Cinema.Web.repository.SeatScheduleRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -20,16 +19,8 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class ScheduledTasks {
 
-    // Token bị thu hồi nay lưu trong Redis và tự hết hạn theo TTL -> không cần dọn thủ công.
-    PasswordOtpRepository passwordOtpRepository;
-
+    // OTP quên mật khẩu và token thu hồi nay đều lưu trong Redis, tự hết hạn theo TTL -> không cần dọn thủ công.
     SeatScheduleRepository seatScheduleRepository;
-
-    @Scheduled(fixedDelay = 5, timeUnit = TimeUnit.MINUTES)
-    public void passwordOtpCleaning() {
-        passwordOtpRepository.deleteAllInvalid();
-        log.info("Scheduled task: CLEANING_INVALID_PASSWORD_OTP");
-    }
 
     // Nhả các ghế giữ tạm (HELD) đã quá held_until về AVAILABLE để người khác đặt được.
     @Scheduled(fixedDelay = 1, timeUnit = TimeUnit.MINUTES)

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Tabs } from 'antd';
+import { Card, InputNumber, Row, Col } from 'antd';
 import moment from 'moment';
 import _ from 'lodash';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -9,7 +9,7 @@ import useRoute from '../../hooks/useRoute';
 import { LOCALSTORAGE_USER } from '../../utils/constant';
 import { getLocalStorage, SwalConfig } from '../../utils/config';
 import LoadingPage from '../LoadingPage';
-import { LayDanhSachPhongVeService, DatVe, LayDanhSachGheTheoSuat } from '../../services/BookingManager';
+import { LayDanhSachPhongVeService, DatVe, LayDanhSachGheTheoSuat, LayThongTinFoodAndDrink } from '../../services/BookingManager';
 import { datGhe, layDanhSachPhongVe, xoaDanhSachGheDangDat } from '../../redux/reducers/BookingReducer';
 import { callApiThongTinNguoiDung } from '../../redux/reducers/UserReducer';
 import { layThongTinPhong } from '../../services/CinemaService';
@@ -23,6 +23,9 @@ const BookingTicketPage = () => {
     const { param, navigate } = useRoute();
     const [isLoading, setIsLoading] = useState(true);
     const [seatConfig, setSeatConfig] = useState({ maxSeatNumber: 9, maxSeatRow: 5 });
+    const [view, setView] = useState('seat'); // 'seat' | 'combo'
+    const [foodList, setFoodList] = useState([]);
+    const [quantities, setQuantities] = useState({});
 
     useEffect(() => {
         if (!getLocalStorage(LOCALSTORAGE_USER)) return navigate('/login');
@@ -63,6 +66,14 @@ const BookingTicketPage = () => {
                     }));
 
                 dispatch(layDanhSachPhongVe({ thongTinPhim: phim, danhSachGhe: seats }));
+
+                // Tải combo của rạp đang đặt để chọn ngay trong trang này.
+                try {
+                    const foods = (await LayThongTinFoodAndDrink()).data.body || [];
+                    setFoodList(foods.filter(item => item.cinemaName === sch.cinemaName));
+                } catch (foodErr) {
+                    console.error('Lỗi khi lấy combo:', foodErr);
+                }
             } catch (e) {
                 console.error(e);
             } finally {
@@ -71,6 +82,68 @@ const BookingTicketPage = () => {
         })();
         return () => dispatch(xoaDanhSachGheDangDat());
     }, [dispatch, navigate, param.id]);
+
+    const handleQuantityChange = (id, value) => {
+        setQuantities(prev => ({ ...prev, [id]: value }));
+    };
+
+    const seatTypeColor = (seatType) => {
+        const t = seatType?.toLowerCase();
+        if (t === 'vip') return '#ffd700';
+        if (t === 'couple') return '#ff69b4';
+        return '#008000';
+    };
+
+    const renderCombos = () => {
+        if (foodList.length === 0) {
+            return (
+                <p style={{ textAlign: 'center', color: '#888', padding: '40px 0', fontSize: 18 }}>
+                    Rạp này hiện chưa có combo nào.
+                </p>
+            );
+        }
+        return (
+            <Row gutter={[24, 24]}>
+                {foodList.map(item => (
+                    <Col key={item.foodAndDrinkId} xs={24} sm={12} md={12} lg={8}>
+                        <Card
+                            title={item.foodAndDrinkName}
+                            bordered={false}
+                            style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                            cover={
+                                <img
+                                    alt={item.foodAndDrinkName}
+                                    src={item.imageFoodAndDrink}
+                                    style={{
+                                        height: 260,
+                                        width: '100%',
+                                        objectFit: 'contain',
+                                        background: '#f5f5f5',
+                                        borderTopLeftRadius: 12,
+                                        borderTopRightRadius: 12
+                                    }}
+                                />
+                            }
+                            extra={
+                                <span style={{ fontSize: 16, fontWeight: 600 }}>
+                                    {item.foodAndDrinkPrice.toLocaleString()}₫
+                                </span>
+                            }
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                <span style={{ marginRight: 8 }}>Số lượng:</span>
+                                <InputNumber
+                                    min={0}
+                                    value={quantities[item.foodAndDrinkId] || 0}
+                                    onChange={value => handleQuantityChange(item.foodAndDrinkId, value)}
+                                />
+                            </div>
+                        </Card>
+                    </Col>
+                ))}
+            </Row>
+        );
+    };
 
     const renderSeats = () => {
         const { maxSeatNumber, maxSeatRow } = seatConfig;
@@ -104,12 +177,8 @@ const BookingTicketPage = () => {
                                     background = '#ccc';
                                 } else if (selecting) {
                                     background = '#F97316';
-                                } else if (ghe.seatType?.toLowerCase() === 'vip') {
-                                    background = '#ffd700';
-                                } else if (ghe.seatType?.toLowerCase() === 'couple') {
-                                    background = '#ff69b4';
                                 } else {
-                                    background = '#008000';
+                                    background = seatTypeColor(ghe.seatType);
                                 }
 
                                 if (mine) {
@@ -184,13 +253,17 @@ const BookingTicketPage = () => {
 
         setIsLoading(true);
         try {
+            const foodAndDrinks = Object.entries(quantities)
+                .filter(([, qty]) => qty > 0)
+                .map(([id, quantity]) => ({ foodAndDrinkId: Number(id), quantity }));
+
             const payload = {
                 scheduleId: parseInt(param.id),
                 userId: thongTinNguoiDung?.id || '',
                 seats: danhSachGheDangDat.map(ghe => ({
                     seatScheduleId: ghe.seatScheduleId
                 })),
-                foodAndDrinks: []
+                foodAndDrinks
             };
 
             await DatVe(payload);
@@ -198,6 +271,8 @@ const BookingTicketPage = () => {
             SwalConfig('Đặt vé thành công', 'success');
             dispatch(xoaDanhSachGheDangDat());
             dispatch(callApiThongTinNguoiDung);
+            setQuantities({});
+            setView('seat');
         } catch (error) {
             console.error('Lỗi đặt vé:', error);
             SwalConfig('Đặt vé thất bại', 'error');
@@ -209,92 +284,119 @@ const BookingTicketPage = () => {
 
 
 
-    const items = [
-        {
-            label: <span style={{ fontSize: '20px', fontWeight: 'bold' }}>01. Chọn ghế & Đặt vé</span>, key: '1',
-            children: (
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, padding: 16 }}>
-                    <div>
-                        <div style={{ position: 'relative', textAlign: 'center', marginBottom: 16 }}>
-                            <div style={{ width: '100%', height: 0, borderBottom: '40px solid #ccc', borderLeft: '60px solid transparent', borderRight: '60px solid transparent' }} />
-                            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff', fontWeight: '600' }}>SCREEN</div>
-                        </div>
-                        {renderSeats()}
-                    </div>
-                    <div style={{ background: '#fff', padding: 16, borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontSize: 20, fontWeight: '500', textAlign: 'left' }}>
-                        <h3 style={{ fontSize: 30, fontWeight: '700', textAlign: 'center', color: '#f97316', marginBottom: 16, marginTop: 10, borderBottom: '2px solid #f97316' }}>
-                            {_.sumBy(danhSachGheDangDat, 'seatPrice').toLocaleString()} VND
-                        </h3>
-                        <div style={{ marginBottom: 16, marginTop: 10, fontSize: 20, fontWeight: '350', textAlign: 'left' }}>
-                            <h4 style={{ fontSize: 25, fontWeight: '600', textAlign: 'center' }}>{thongTinPhim.movieName}</h4>
-                            <p style={{ marginBottom: 16, marginTop: 10, color: 'grey' }}><strong style={{ color: 'black' }}>Cụm rạp:</strong> {thongTinPhim.cinemaName}</p>
-                            <p style={{ marginBottom: 16, marginTop: 10, color: 'grey' }}><strong style={{ color: 'black' }}>Phòng chiếu:</strong> {thongTinPhim.roomName}</p>
-                            <p style={{ marginBottom: 16, marginTop: 10, color: 'grey' }}><strong style={{ color: 'black' }}>Ngày chiếu:</strong> {thongTinPhim.scheduleDate}</p>
-                            <p style={{ marginBottom: 16, marginTop: 10, color: 'grey' }}><strong style={{ color: 'black' }}>Suất chiếu:</strong> {thongTinPhim.scheduleStart} ~ {thongTinPhim.scheduleEnd}</p>
-                        </div>
-                        <div>
-                            <strong>Ghế đã chọn:</strong>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', marginTop: 8 }}>
-                                {_.sortBy(danhSachGheDangDat, 'seatNumber').map(g => (
-                                    <span key={g.seatId} style={{ padding: '4px 8px', margin: 4, background: '#ffedd5', borderRadius: 4, color: '#c2410c' }}>
-                                        {g.seatRow}{g.seatNumber}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                        <div style={{ margin: '16px 0', fontWeight: '350' }}>
-                            <p style={{ marginBottom: 16, marginTop: 10, color: 'grey' }}><strong style={{ color: 'black' }}>Email:</strong> {thongTinNguoiDung.email}</p>
-                            <p style={{ marginBottom: 50, marginTop: 10, color: 'grey' }}><strong style={{ color: 'black' }}>Phone:</strong> {thongTinNguoiDung.phoneNumber}</p>
-                        </div>
-                        <button
-                            onClick={() => {
-                                if (danhSachGheDangDat.length === 0) {
-                                    SwalConfig('Vui lòng chọn ít nhất 1 ghế để chọn combo', 'warning', true);
-                                    return;
-                                }
-
-                                const userId = thongTinNguoiDung?.id;
-                                if (!userId) {
-                                    SwalConfig('Thiếu thông tin người dùng', 'error', true);
-                                    return;
-                                }
-
-                                const bookingInfo = {
-                                    scheduleId: Number(param.id),
-                                    userId: userId,
-                                    cinemaName: thongTinPhim?.cinemaName,
-                                    seats: danhSachGheDangDat.map(ghe => ({
-                                        seatScheduleId: ghe.seatScheduleId
-                                    }))
-                                };
-
-                                localStorage.setItem('booking_info', JSON.stringify(bookingInfo));
-                                navigate('/foodanddrink');
-                            }}
-                            style={{
-                                width: '100%',
-                                padding: '12px 0',
-                                background: '#10b981',
-                                border: 'none',
-                                borderRadius: 8,
-                                color: '#fff',
-                                fontWeight: '700',
-                                cursor: 'pointer',
-                                marginBottom: 12,
-                            }}
-                        >
-                            CHỌN COMBO
-                        </button>
-                        <button className='dat_ve_button' onClick={handleDatVe} style={{ width: '100%', padding: '12px 0', background: '#f97316', border: 'none', borderRadius: 8, color: '#fff', fontWeight: '700', cursor: 'pointer' }}>
-                            ĐẶT VÉ
-                        </button>
-                    </div>
-                </div>
-            )
+    const toggleView = () => {
+        if (view === 'seat') {
+            if (danhSachGheDangDat.length === 0) {
+                SwalConfig('Vui lòng chọn ít nhất 1 ghế để chọn combo', 'warning', true);
+                return;
+            }
+            setView('combo');
+        } else {
+            setView('seat');
         }
-    ];
+    };
 
-    return isLoading ? <LoadingPage /> : <Tabs items={items} style={{ marginTop: 80, padding: '0 16px' }} />;
+    if (isLoading) return <LoadingPage />;
+
+    const seatTotal = _.sumBy(danhSachGheDangDat, 'seatPrice');
+    const comboTotal = foodList.reduce(
+        (sum, item) => sum + (quantities[item.foodAndDrinkId] || 0) * item.foodAndDrinkPrice,
+        0
+    );
+    const tongTien = seatTotal + comboTotal;
+
+    return (
+        <div style={{ marginTop: 80, padding: '0 16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, padding: 16 }}>
+                <div>
+                    {view === 'seat' ? (
+                        <>
+                            <div style={{ position: 'relative', textAlign: 'center', marginBottom: 16 }}>
+                                <div style={{ width: '100%', height: 0, borderBottom: '40px solid #ccc', borderLeft: '60px solid transparent', borderRight: '60px solid transparent' }} />
+                                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff', fontWeight: '600' }}>SCREEN</div>
+                            </div>
+                            {renderSeats()}
+                        </>
+                    ) : (
+                        <div>
+                            <h3 style={{ fontSize: 24, fontWeight: 700, marginBottom: 16, color: '#f97316' }}>Chọn đồ ăn và thức uống</h3>
+                            {renderCombos()}
+                        </div>
+                    )}
+                </div>
+                <div style={{ background: '#fff', padding: 16, borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontSize: 20, fontWeight: '500', textAlign: 'left' }}>
+                    <h3 style={{ fontSize: 30, fontWeight: '700', textAlign: 'center', color: '#f97316', marginBottom: 16, marginTop: 10, borderBottom: '2px solid #f97316' }}>
+                        {tongTien.toLocaleString()} VND
+                    </h3>
+                    <div style={{ marginBottom: 16, marginTop: 10, fontSize: 20, fontWeight: '350', textAlign: 'left' }}>
+                        <h4 style={{ fontSize: 25, fontWeight: '600', textAlign: 'center' }}>{thongTinPhim.movieName}</h4>
+                        <p style={{ marginBottom: 16, marginTop: 10, color: 'grey' }}><strong style={{ color: 'black' }}>Cụm rạp:</strong> {thongTinPhim.cinemaName}</p>
+                        <p style={{ marginBottom: 16, marginTop: 10, color: 'grey' }}><strong style={{ color: 'black' }}>Phòng chiếu:</strong> {thongTinPhim.roomName}</p>
+                        <p style={{ marginBottom: 16, marginTop: 10, color: 'grey' }}><strong style={{ color: 'black' }}>Ngày chiếu:</strong> {thongTinPhim.scheduleDate}</p>
+                        <p style={{ marginBottom: 16, marginTop: 10, color: 'grey' }}><strong style={{ color: 'black' }}>Suất chiếu:</strong> {thongTinPhim.scheduleStart} ~ {thongTinPhim.scheduleEnd}</p>
+                    </div>
+                    <div>
+                        <strong style={{ color: 'black' }}>Ghế đã chọn:</strong>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', marginTop: 8 }}>
+                            {_.sortBy(danhSachGheDangDat, 'seatNumber').map(g => (
+                                <span key={g.seatId} style={{
+                                    width: 36, height: 36, margin: 4,
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    flex: '0 0 auto',
+                                    background: seatTypeColor(g.seatType),
+                                    color: g.seatType?.toLowerCase() === 'vip' ? '#000' : '#fff',
+                                    borderRadius: 4, fontSize: 14, fontWeight: 600,
+                                }}>
+                                    {g.seatRow}{g.seatNumber}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                    <div style={{ marginTop: 16 }}>
+                        <strong style={{ color: 'black' }}>Đồ ăn/thức uống:</strong>
+                        {foodList.filter(f => (quantities[f.foodAndDrinkId] || 0) > 0).length === 0 ? (
+                            <div style={{ color: 'grey', fontSize: 16, marginTop: 8 }}>Chưa chọn</div>
+                        ) : (
+                            <div style={{ marginTop: 8, fontSize: 16 }}>
+                                {foodList.filter(f => (quantities[f.foodAndDrinkId] || 0) > 0).map(f => {
+                                    const qty = quantities[f.foodAndDrinkId];
+                                    return (
+                                        <div key={f.foodAndDrinkId} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                            <span>{f.foodAndDrinkName} × {qty}</span>
+                                            <span style={{ color: '#f97316' }}>{(f.foodAndDrinkPrice * qty).toLocaleString()}₫</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                    <div style={{ margin: '16px 0', fontWeight: '350' }}>
+                        <p style={{ marginBottom: 16, marginTop: 10, color: 'grey' }}><strong style={{ color: 'black' }}>Email:</strong> {thongTinNguoiDung.email}</p>
+                        <p style={{ marginBottom: 50, marginTop: 10, color: 'grey' }}><strong style={{ color: 'black' }}>Phone:</strong> {thongTinNguoiDung.phoneNumber}</p>
+                    </div>
+                    <button
+                        onClick={toggleView}
+                        style={{
+                            width: '100%',
+                            padding: '12px 0',
+                            background: '#10b981',
+                            border: 'none',
+                            borderRadius: 8,
+                            color: '#fff',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            marginBottom: 12,
+                        }}
+                    >
+                        {view === 'seat' ? 'CHỌN COMBO' : 'CHỌN GHẾ'}
+                    </button>
+                    <button className='dat_ve_button' onClick={handleDatVe} style={{ width: '100%', padding: '12px 0', background: '#f97316', border: 'none', borderRadius: 8, color: '#fff', fontWeight: '700', cursor: 'pointer' }}>
+                        ĐẶT VÉ
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 export default BookingTicketPage;

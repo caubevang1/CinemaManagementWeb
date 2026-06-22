@@ -1,7 +1,5 @@
 package com.cinemaweb.API.Cinema.Web.service;
 
-
-import com.cinemaweb.API.Cinema.Web.entity.PasswordOTP;
 import com.cinemaweb.API.Cinema.Web.entity.User;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +12,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.Date;
 
-
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -23,10 +20,8 @@ public class EmailService {
     JavaMailSender mailSender;
     private final String SYSTEM_EMAIL_ADDRESS = "buihaiphupng6@gmail.com";
 
-
-    public void sendResetPasswordOtp(User user, PasswordOTP passwordOTP) throws MailException {
-        String OTP = passwordOTP.getOTP();
-        String resetLink = "http://localhost:5173/reset-password/" + OTP;
+    public void sendResetPasswordOtp(User user, String otpToken) throws MailException {
+        String resetLink = "http://localhost:5173/reset-password/" + otpToken;
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(user.getEmail());
         message.setFrom(SYSTEM_EMAIL_ADDRESS);

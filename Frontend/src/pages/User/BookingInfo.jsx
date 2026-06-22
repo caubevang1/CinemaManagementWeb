@@ -1,18 +1,79 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { Modal } from 'antd';
 import { callApiThongTinBooking } from '../../redux/reducers/UserReducer';
 import moment from 'moment';
 import { LayThongTinFoodAndDrinkChiTiet, LayDanhSachGheSchedule } from '../../services/BookingManager';
+import { LayDanhSachBanBe } from '../../services/FriendService';
+import { GuiLoiMoiChuyenVe } from '../../services/TicketTransferService';
+import { SwalConfig } from '../../utils/config';
+import UserAvatar from '../../components/UserAvatar';
 
 const ThongTinBooking = () => {
     const dispatch = useDispatch();
     const bookings = useSelector(state => state.UserReducer.bookings);
+    const thongTinNguoiDung = useSelector(state => state.UserReducer.thongTinNguoiDung);
+    const hasTransferPin = !!thongTinNguoiDung?.hasTransferPin;
     const [foodDetails, setFoodDetails] = useState({});
     const [seatDetails, setSeatDetails] = useState({});
+    const [pickerOpen, setPickerOpen] = useState(false);
+    const [pickerBookingId, setPickerBookingId] = useState(null);
+    const [friends, setFriends] = useState([]);
+    const [sending, setSending] = useState(false);
+    const [pinModalOpen, setPinModalOpen] = useState(false);
+    const [selectedFriendId, setSelectedFriendId] = useState(null);
+    const [pin, setPin] = useState('');
 
     useEffect(() => {
         dispatch(callApiThongTinBooking);
     }, [dispatch]);
+
+    // Nạp lại danh sách vé khi có chuyển nhượng thành công (đổi quyền sở hữu).
+    useEffect(() => {
+        const reload = () => dispatch(callApiThongTinBooking);
+        window.addEventListener('ticket-transfer-updated', reload);
+        return () => window.removeEventListener('ticket-transfer-updated', reload);
+    }, [dispatch]);
+
+    const openPicker = async (bookingId) => {
+        setPickerBookingId(bookingId);
+        setPickerOpen(true);
+        try {
+            const res = await LayDanhSachBanBe();
+            setFriends(res.data.body || []);
+        } catch {
+            setFriends([]);
+        }
+    };
+
+    // Chọn bạn xong → chuyển sang bước nhập mã PIN.
+    const startTransfer = (friendId) => {
+        if (!hasTransferPin) {
+            SwalConfig('Bạn chưa thiết lập mã PIN chuyển nhượng. Vào "Thông tin tài khoản" để đặt mã PIN.', 'warning', true, 3500);
+            return;
+        }
+        setSelectedFriendId(friendId);
+        setPickerOpen(false);
+        setPin('');
+        setPinModalOpen(true);
+    };
+
+    const handleTransfer = async () => {
+        if (!/^\d{6}$/.test(pin)) {
+            SwalConfig('Mã PIN phải gồm đúng 6 chữ số', 'error', true);
+            return;
+        }
+        setSending(true);
+        try {
+            await GuiLoiMoiChuyenVe(pickerBookingId, selectedFriendId, pin);
+            SwalConfig('Đã gửi lời mời chuyển nhượng vé', 'success', false);
+            setPinModalOpen(false);
+        } catch (e) {
+            SwalConfig(e?.response?.data?.message || 'Không thể chuyển nhượng vé', 'error', true);
+        } finally {
+            setSending(false);
+        }
+    };
 
     useEffect(() => {
         const fetchFoodDetails = async () => {
@@ -118,6 +179,35 @@ const ThongTinBooking = () => {
             fontSize: '16px',
             borderTop: '1px dashed #ccc',
             paddingTop: '10px'
+        },
+        transferBtn: {
+            marginTop: '15px',
+            backgroundColor: '#f97316',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '10px 16px',
+            fontWeight: 600,
+            cursor: 'pointer'
+        },
+        pickBtn: {
+            backgroundColor: '#f97316',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '6px 14px',
+            fontWeight: 600,
+            cursor: 'pointer'
+        },
+        transferredTag: {
+            marginTop: '15px',
+            display: 'inline-block',
+            backgroundColor: '#fff7ed',
+            color: '#c2410c',
+            border: '1px solid #fed7aa',
+            borderRadius: '8px',
+            padding: '8px 14px',
+            fontWeight: 600
         }
     };
 
@@ -175,9 +265,85 @@ const ThongTinBooking = () => {
                         <div style={styles.totalPrice}>
                             Tổng cộng: {booking.price.toLocaleString()} VND
                         </div>
+
+                        {booking.transferredToUsername ? (
+                            <div style={styles.transferredTag}>
+                                Đã chuyển nhượng cho <b>{booking.transferredToUsername}</b>
+                            </div>
+                        ) : (
+                            <button
+                                style={styles.transferBtn}
+                                onClick={() => openPicker(booking.bookingId)}
+                            >
+                                Chuyển nhượng cho bạn bè
+                            </button>
+                        )}
                     </div>
                 ))
             )}
+
+            <Modal
+                title="Chọn bạn để chuyển nhượng vé"
+                open={pickerOpen}
+                onCancel={() => setPickerOpen(false)}
+                footer={null}
+                centered
+                width={420}
+            >
+                {friends.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: '#888', padding: '16px 0' }}>
+                        Bạn chưa có người bạn nào.
+                    </p>
+                ) : (
+                    friends.map((f) => (
+                        <div
+                            key={f.friendshipId}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 12,
+                                padding: '10px 6px', borderBottom: '1px solid #f1f1f1',
+                            }}
+                        >
+                            <UserAvatar size={40} avatar={f.otherAvatar} name={f.otherUsername} />
+                            <span style={{ flex: 1, fontWeight: 600 }}>{f.otherUsername}</span>
+                            <button
+                                style={styles.pickBtn}
+                                onClick={() => startTransfer(f.otherUserId)}
+                            >
+                                Chuyển
+                            </button>
+                        </div>
+                    ))
+                )}
+            </Modal>
+
+            <Modal
+                title="Nhập mã PIN chuyển nhượng"
+                open={pinModalOpen}
+                onCancel={() => setPinModalOpen(false)}
+                onOk={handleTransfer}
+                okText="Xác nhận"
+                cancelText="Hủy"
+                confirmLoading={sending}
+                centered
+                width={360}
+            >
+                <p style={{ marginBottom: 12, color: '#555' }}>
+                    Nhập mã PIN 6 số của bạn để xác nhận chuyển nhượng vé.
+                </p>
+                <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                    onKeyDown={(e) => e.key === 'Enter' && handleTransfer()}
+                    placeholder="••••••"
+                    style={{
+                        width: '100%', padding: '10px 14px', fontSize: 20, letterSpacing: 8,
+                        textAlign: 'center', border: '1px solid #e5e7eb', borderRadius: 8, outline: 'none',
+                    }}
+                />
+            </Modal>
         </div>
     );
 };

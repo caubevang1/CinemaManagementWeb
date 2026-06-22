@@ -25,4 +25,7 @@ public class BookingResponse {
     List<BookingFoodAndDrinkResponse> foodAndDrinks;
     BigDecimal price;
     LocalDateTime bookingDay;
+
+    // Khác null nếu vé này đã được chuyển nhượng đi (giá trị = username người nhận).
+    String transferredToUsername;
 }

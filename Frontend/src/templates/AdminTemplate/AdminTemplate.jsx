@@ -5,6 +5,7 @@ import {
     UserOutlined,
     SnippetsOutlined,
     FileAddOutlined,
+    ShoppingCartOutlined,
 } from '@ant-design/icons';
 import { Layout, Menu } from 'antd';
 import React, { useEffect, useState } from 'react';
@@ -126,6 +127,23 @@ export default function AdminTemplate() {
                                                     key: '27',
                                                     icon: <FileAddOutlined />,
                                                     label: <NavLink to='/admin/room/addnewroom'>Add Room</NavLink>,
+                                                },
+                                            ]
+                                        },
+                                        {
+                                            key: '5',
+                                            icon: <ShoppingCartOutlined />,
+                                            label: 'Combo / Đồ ăn',
+                                            children: [
+                                                {
+                                                    key: '28',
+                                                    icon: <SnippetsOutlined />,
+                                                    label: <NavLink to='foodcombo'>Quản lý combo</NavLink>,
+                                                },
+                                                {
+                                                    key: '29',
+                                                    icon: <FileAddOutlined />,
+                                                    label: <NavLink to='/admin/foodcombo/add'>Thêm combo</NavLink>,
                                                 },
                                             ]
                                         },

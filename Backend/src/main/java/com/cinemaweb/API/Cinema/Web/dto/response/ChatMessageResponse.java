@@ -17,4 +17,8 @@ public class ChatMessageResponse {
     String content;
     LocalDateTime sentAt;
     LocalDateTime readAt;
+
+    // "TEXT" | "TRANSFER"; với TRANSFER kèm thông tin lời mời chuyển nhượng.
+    String type;
+    TicketTransferResponse transfer;
 }

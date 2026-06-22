@@ -34,6 +34,7 @@ export default function HomeCarousel() {
                             </svg>
                         </button>
                         {isModalOpen ? <Modal
+                            className="trailer-modal"
                             footer={null}
                             centered
                             closable={false}

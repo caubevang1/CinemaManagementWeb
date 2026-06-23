@@ -26,6 +26,9 @@ public class BookingResponse {
     BigDecimal price;
     LocalDateTime bookingDay;
 
+    // Trạng thái đơn: PENDING (chờ thanh toán) / PAID / CANCELLED.
+    String status;
+
     // Khác null nếu vé này đã được chuyển nhượng đi (giá trị = username người nhận).
     String transferredToUsername;
 }

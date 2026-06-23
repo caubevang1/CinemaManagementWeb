@@ -49,13 +49,15 @@ public class SecurityConfig {
             "/booking"
     };
     private final String[] PUBLIC_ENDPOINTS_GET = {
-            "/payment/create_payment",
-            "/payment/payment_info",
+            "/payment/vnpay-return",
+            "/payment/vnpay-ipn",
             "/booking/{bookingId}",
             "/cinemas",
             "/cinemas/{cinemaId}",
             "/movies",
             "/movies/{movieId}",
+            "/movies/search",
+            "/movies/suggest",
             "/schedule",
             "/schedule/{scheduleId}",
             "/bookingFoodAndDrink",

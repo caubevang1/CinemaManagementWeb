@@ -3,6 +3,8 @@ package com.cinemaweb.API.Cinema.Web.controller;
 import com.cinemaweb.API.Cinema.Web.dto.request.MovieRequest;
 import com.cinemaweb.API.Cinema.Web.dto.response.ApiResponse;
 import com.cinemaweb.API.Cinema.Web.dto.response.MovieResponse;
+import com.cinemaweb.API.Cinema.Web.enums.MovieStatus;
+import com.cinemaweb.API.Cinema.Web.search.MovieSearchService;
 import com.cinemaweb.API.Cinema.Web.service.MovieService;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -19,6 +21,28 @@ import java.util.List;
 public class MovieController {
     @Autowired
     MovieService movieService;
+
+    @Autowired
+    MovieSearchService movieSearchService;
+
+    // Tìm kiếm full-text qua RediSearch theo tên/thể loại/mô tả, lọc tùy chọn theo trạng thái.
+    @GetMapping("/search")
+    public ApiResponse<List<MovieResponse>> searchMovies(
+            @RequestParam(name = "q", required = false) String q,
+            @RequestParam(name = "status", required = false) MovieStatus status) {
+        return ApiResponse.<List<MovieResponse>>builder()
+                .body(movieSearchService.search(q, status))
+                .build();
+    }
+
+    // Gợi ý autocomplete tên phim theo prefix.
+    @GetMapping("/suggest")
+    public ApiResponse<List<String>> suggestMovies(
+            @RequestParam(name = "q", required = false) String q) {
+        return ApiResponse.<List<String>>builder()
+                .body(movieSearchService.autocomplete(q))
+                .build();
+    }
 
     @GetMapping
     public ApiResponse<List<MovieResponse>> getAllMovies() {

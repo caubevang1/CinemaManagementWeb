@@ -1,18 +1,38 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, InputNumber, Row, Col } from 'antd';
 import moment from 'moment';
 import _ from 'lodash';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faXmark, faUserTag } from '@fortawesome/free-solid-svg-icons';
+import { faXmark } from '@fortawesome/free-solid-svg-icons';
 import useRoute from '../../hooks/useRoute';
 import { LOCALSTORAGE_USER } from '../../utils/constant';
 import { getLocalStorage, SwalConfig } from '../../utils/config';
 import LoadingPage from '../LoadingPage';
-import { LayDanhSachPhongVeService, DatVe, LayDanhSachGheTheoSuat, LayThongTinFoodAndDrink } from '../../services/BookingManager';
+import { LayDanhSachPhongVeService, DatVe, LayDanhSachGheTheoSuat, LayThongTinFoodAndDrink, GiuGhe, NhaGhe } from '../../services/BookingManager';
 import { datGhe, layDanhSachPhongVe, xoaDanhSachGheDangDat } from '../../redux/reducers/BookingReducer';
 import { callApiThongTinNguoiDung } from '../../redux/reducers/UserReducer';
 import { layThongTinPhong } from '../../services/CinemaService';
+
+// Chuẩn hoá 1 ghế-suất từ API về dạng dùng trong redux.
+const mapSeat = (s) => ({
+    seatScheduleId: s.seatScheduleId,
+    seatId: s.seatId,
+    seatType: s.seatType,
+    seatRow: s.seatRow,
+    seatNumber: s.seatNumber,
+    seatPrice: s.seatPrice,
+    seatState: s.seatState,   // AVAILABLE / HELD / BOOKED
+    heldByMe: s.heldByMe,     // ghế đang do chính user này giữ
+    heldUntil: s.heldUntil,
+    username: ''
+});
+
+// Lấy mốc hết hạn sớm nhất (deadline duy nhất) trong danh sách response giữ ghế.
+const earliestHeldUntil = (list) =>
+    (list || []).map(s => s.heldUntil).filter(Boolean).sort()[0] || null;
+
+const getErrMsg = (e) => e?.response?.data?.message;
 
 const BookingTicketPage = () => {
     const dispatch = useDispatch();
@@ -26,21 +46,44 @@ const BookingTicketPage = () => {
     const [view, setView] = useState('seat'); // 'seat' | 'combo'
     const [foodList, setFoodList] = useState([]);
     const [quantities, setQuantities] = useState({});
+    const [scheduleId, setScheduleId] = useState(null);
+    const [heldUntil, setHeldUntil] = useState(null);   // ISO string | null
+    const [remainingMs, setRemainingMs] = useState(0);
 
+    // Tải lại chỉ danh sách ghế (giữ nguyên thông tin phim) để cập nhật trạng thái HELD/BOOKED.
+    const reloadSeatsOnly = useCallback(async () => {
+        if (!scheduleId) return;
+        try {
+            const seatsRaw = (await LayDanhSachGheTheoSuat(scheduleId)).data.body;
+            dispatch(layDanhSachPhongVe({ thongTinPhim, danhSachGhe: seatsRaw.map(mapSeat) }));
+        } catch (e) {
+            console.error('Lỗi tải lại ghế:', e);
+        }
+    }, [scheduleId, thongTinPhim, dispatch]);
+
+    // Hết thời gian giữ ghế: nhả đồng hồ, xoá lựa chọn, quay về sơ đồ ghế, tải lại trạng thái.
+    const handleExpire = useCallback(() => {
+        setHeldUntil(null);
+        setView('seat');
+        setQuantities({});
+        dispatch(xoaDanhSachGheDangDat());
+        SwalConfig('Hết thời gian giữ ghế, vui lòng chọn lại', 'warning', true);
+        reloadSeatsOnly();
+    }, [dispatch, reloadSeatsOnly]);
+
+    // Tải dữ liệu lần đầu + khôi phục lựa chọn/đồng hồ nếu user đang giữ ghế (sau khi F5).
     useEffect(() => {
         if (!getLocalStorage(LOCALSTORAGE_USER)) return navigate('/login');
         dispatch(callApiThongTinNguoiDung);
         (async () => {
             try {
                 const sch = (await LayDanhSachPhongVeService(param.id)).data.body;
+                setScheduleId(sch.scheduleId);
                 const seatsRaw = (await LayDanhSachGheTheoSuat(sch.scheduleId)).data.body;
                 const rooms = (await layThongTinPhong()).data.body;
                 const room = rooms.find(r => r.roomId === sch.roomId);
                 if (room) {
-                    setSeatConfig({
-                        maxSeatNumber: room.numCol,
-                        maxSeatRow: room.numRow
-                    });
+                    setSeatConfig({ maxSeatNumber: room.numCol, maxSeatRow: room.numRow });
                 }
 
                 const phim = {
@@ -53,21 +96,16 @@ const BookingTicketPage = () => {
                     scheduleEnd: moment(sch.scheduleEnd).format('HH:mm')
                 };
 
-                const seats = seatsRaw
-                    .map(s => ({
-                        seatScheduleId: s.seatScheduleId || s.seatScheduleId || s.seatScheduleID || s.seatSchedule?.id || s.id,
-                        seatId: s.seatId,
-                        seatType: s.seatType,
-                        seatRow: s.seatRow,
-                        seatNumber: s.seatNumber,
-                        seatPrice: s.seatPrice,
-                        seatState: s.seatState,
-                        username: ''
-                    }));
-
+                const seats = seatsRaw.map(mapSeat);
                 dispatch(layDanhSachPhongVe({ thongTinPhim: phim, danhSachGhe: seats }));
 
-                // Tải combo của rạp đang đặt để chọn ngay trong trang này.
+                // Khôi phục: nếu có ghế đang do mình giữ (Redis), dựng lại lựa chọn + đồng hồ.
+                const mine = seats.filter(s => s.heldByMe);
+                if (mine.length) {
+                    mine.forEach(s => dispatch(datGhe({ ...s, username: thongTinNguoiDung?.username || '' })));
+                    setHeldUntil(earliestHeldUntil(mine));
+                }
+
                 try {
                     const foods = (await LayThongTinFoodAndDrink()).data.body || [];
                     setFoodList(foods.filter(item => item.cinemaName === sch.cinemaName));
@@ -81,7 +119,21 @@ const BookingTicketPage = () => {
             }
         })();
         return () => dispatch(xoaDanhSachGheDangDat());
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [dispatch, navigate, param.id]);
+
+    // Đồng hồ đếm ngược: chạy khi đang giữ ghế (heldUntil != null), đồng nhất ở cả combo & thanh toán.
+    useEffect(() => {
+        if (!heldUntil) { setRemainingMs(0); return; }
+        const tick = () => {
+            const ms = new Date(heldUntil).getTime() - Date.now();
+            setRemainingMs(ms);
+            if (ms <= 0) handleExpire();
+        };
+        tick();
+        const timer = setInterval(tick, 1000);
+        return () => clearInterval(timer);
+    }, [heldUntil, handleExpire]);
 
     const handleQuantityChange = (id, value) => {
         setQuantities(prev => ({ ...prev, [id]: value }));
@@ -92,6 +144,11 @@ const BookingTicketPage = () => {
         if (t === 'vip') return '#ffd700';
         if (t === 'couple') return '#ff69b4';
         return '#008000';
+    };
+
+    const formatTime = (ms) => {
+        const s = Math.max(0, Math.floor(ms / 1000));
+        return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
     };
 
     const renderCombos = () => {
@@ -153,7 +210,6 @@ const BookingTicketPage = () => {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 {seatRows.map((row) => {
-                    const seats = groupedSeats[row] || [];
                     const rowSeats = Array.from({ length: maxSeatNumber }, (_, index) => {
                         return (groupedSeats[row] || []).find(s => Number(s.seatNumber) === index + 1);
                     });
@@ -166,30 +222,19 @@ const BookingTicketPage = () => {
                                     return <div key={i} style={{ width: 40, height: 40, margin: 4 }} />;
                                 }
 
-                                // seatState giờ là chuỗi: AVAILABLE / HELD / BOOKED.
-                                const booked = ghe.seatState === 'BOOKED' || ghe.seatState === 'HELD';
+                                // Đã đặt, hoặc đang được NGƯỜI KHÁC giữ -> không chọn được.
+                                const heldByOther = ghe.seatState === 'HELD' && !ghe.heldByMe;
+                                const unavailable = ghe.seatState === 'BOOKED' || heldByOther;
                                 const selecting = danhSachGheDangDat.some(d => d.seatId === ghe.seatId);
-                                const mine = thongTinNguoiDung.username === ghe.username;
 
-                                let background = '#fff';
-                                let border = 'none';
-                                if (booked) {
-                                    background = '#ccc';
-                                } else if (selecting) {
-                                    background = '#F97316';
-                                } else {
-                                    background = seatTypeColor(ghe.seatType);
-                                }
-
-                                if (mine) {
-                                    background = '#fff';
-                                    border = '2px solid #ffa500';
-                                }
+                                let background = seatTypeColor(ghe.seatType);
+                                if (unavailable) background = '#ccc';
+                                else if (selecting) background = '#F97316';
 
                                 return (
                                     <button
                                         key={ghe.seatId}
-                                        disabled={booked}
+                                        disabled={unavailable}
                                         onClick={() => dispatch(datGhe({ ...ghe, username: thongTinNguoiDung?.username || '' }))}
                                         style={{
                                             width: 40,
@@ -198,16 +243,16 @@ const BookingTicketPage = () => {
                                             borderRadius: 8,
                                             fontWeight: 'bold',
                                             background,
-                                            border,
-                                            color: booked ? '#fff' : '#000',
-                                            cursor: booked ? 'not-allowed' : 'pointer',
+                                            border: 'none',
+                                            color: unavailable ? '#fff' : '#000',
+                                            cursor: unavailable ? 'not-allowed' : 'pointer',
                                             display: 'flex',
                                             justifyContent: 'center',
                                             alignItems: 'center',
                                             transition: 'transform 0.2s ease',
                                         }}
                                     >
-                                        {booked ? (mine ? <FontAwesomeIcon icon={faUserTag} /> : <FontAwesomeIcon icon={faXmark} />) : ghe.seatNumber}
+                                        {unavailable ? <FontAwesomeIcon icon={faXmark} /> : ghe.seatNumber}
                                     </button>
                                 );
                             })}
@@ -235,11 +280,7 @@ const BookingTicketPage = () => {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ width: 24, height: 24, background: '#ccc', borderRadius: 4 }}></div>
-                        <span>Đã đặt</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 24, height: 24, background: '#fff', border: '2px solid #ffa500', borderRadius: 4 }}></div>
-                        <span>Ghế của bạn</span>
+                        <span>Đã đặt / đang giữ</span>
                     </div>
                 </div>
             </div>
@@ -253,6 +294,29 @@ const BookingTicketPage = () => {
 
         setIsLoading(true);
         try {
+            const seatScheduleIds = danhSachGheDangDat.map(g => g.seatScheduleId);
+
+            // Đảm bảo đã giữ ghế (trường hợp bấm ĐẶT VÉ thẳng từ sơ đồ ghế, chưa qua combo).
+            if (!heldUntil) {
+                const hold = await GiuGhe(seatScheduleIds);
+                setHeldUntil(earliestHeldUntil(hold.data.body));
+            }
+
+            // Check lại lần nữa: ghế có bị người khác đặt/giữ trong lúc chọn combo không.
+            const fresh = (await LayDanhSachGheTheoSuat(scheduleId)).data.body;
+            const conflict = seatScheduleIds.some(id => {
+                const s = fresh.find(x => x.seatScheduleId === id);
+                return !s || s.seatState === 'BOOKED' || (s.seatState === 'HELD' && !s.heldByMe);
+            });
+            if (conflict) {
+                SwalConfig('Một số ghế vừa bị người khác giữ hoặc đặt, vui lòng chọn lại', 'error');
+                dispatch(xoaDanhSachGheDangDat());
+                setHeldUntil(null);
+                setView('seat');
+                await reloadSeatsOnly();
+                return;
+            }
+
             const foodAndDrinks = Object.entries(quantities)
                 .filter(([, qty]) => qty > 0)
                 .map(([id, quantity]) => ({ foodAndDrinkId: Number(id), quantity }));
@@ -260,39 +324,70 @@ const BookingTicketPage = () => {
             const payload = {
                 scheduleId: parseInt(param.id),
                 userId: thongTinNguoiDung?.id || '',
-                seats: danhSachGheDangDat.map(ghe => ({
-                    seatScheduleId: ghe.seatScheduleId
-                })),
+                seats: seatScheduleIds.map(seatScheduleId => ({ seatScheduleId })),
                 foodAndDrinks
             };
 
-            await DatVe(payload);
-
-            SwalConfig('Đặt vé thành công', 'success');
-            dispatch(xoaDanhSachGheDangDat());
-            dispatch(callApiThongTinNguoiDung);
-            setQuantities({});
-            setView('seat');
+            // Tạo đơn PENDING + chuyển sang hard hold, nhận URL VNPay rồi redirect sang thanh toán.
+            const res = await DatVe(payload);
+            const paymentUrl = res?.data?.body?.paymentUrl;
+            if (paymentUrl) {
+                setHeldUntil(null);
+                dispatch(xoaDanhSachGheDangDat());
+                setQuantities({});
+                window.location.href = paymentUrl;
+                return;
+            }
+            SwalConfig('Không nhận được liên kết thanh toán', 'error');
         } catch (error) {
             console.error('Lỗi đặt vé:', error);
-            SwalConfig('Đặt vé thất bại', 'error');
+            SwalConfig(getErrMsg(error) || 'Đặt vé thất bại', 'error');
+            dispatch(xoaDanhSachGheDangDat());
+            setHeldUntil(null);
+            setView('seat');
+            await reloadSeatsOnly();
         } finally {
             setIsLoading(false);
         }
     };
 
-
-
-
-    const toggleView = () => {
+    const toggleView = async () => {
         if (view === 'seat') {
+            // Sang chọn combo: giữ ghế (Redis) + bật đồng hồ đếm ngược.
             if (danhSachGheDangDat.length === 0) {
                 SwalConfig('Vui lòng chọn ít nhất 1 ghế để chọn combo', 'warning', true);
                 return;
             }
-            setView('combo');
+            setIsLoading(true);
+            try {
+                const ids = danhSachGheDangDat.map(g => g.seatScheduleId);
+                const hold = await GiuGhe(ids);
+                setHeldUntil(earliestHeldUntil(hold.data.body));
+                setView('combo');
+            } catch (e) {
+                console.error('Lỗi giữ ghế:', e);
+                SwalConfig(getErrMsg(e) || 'Không giữ được ghế, vui lòng chọn lại', 'error');
+                dispatch(xoaDanhSachGheDangDat());
+                setHeldUntil(null);
+                await reloadSeatsOnly();
+            } finally {
+                setIsLoading(false);
+            }
         } else {
+            // Quay lại chọn ghế: nhả ghế + xoá đồng hồ, đưa ghế về AVAILABLE.
+            setIsLoading(true);
+            try {
+                const ids = danhSachGheDangDat.map(g => g.seatScheduleId);
+                await NhaGhe(ids);
+            } catch (e) {
+                console.error('Lỗi nhả ghế:', e);
+            }
+            dispatch(xoaDanhSachGheDangDat());
+            setHeldUntil(null);
+            setQuantities({});
+            await reloadSeatsOnly();
             setView('seat');
+            setIsLoading(false);
         }
     };
 
@@ -307,6 +402,15 @@ const BookingTicketPage = () => {
 
     return (
         <div style={{ marginTop: 80, padding: '0 16px' }}>
+            {heldUntil && (
+                <div style={{
+                    textAlign: 'center', background: '#fff7ed', border: '1px solid #f97316',
+                    color: '#c2410c', padding: '10px 16px', borderRadius: 8, marginBottom: 12,
+                    fontWeight: 600, fontSize: 18
+                }}>
+                    ⏳ Thời gian giữ ghế còn lại: <span style={{ color: '#dc2626' }}>{formatTime(remainingMs)}</span>
+                </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, padding: 16 }}>
                 <div>
                     {view === 'seat' ? (

@@ -9,6 +9,7 @@ import com.cinemaweb.API.Cinema.Web.exception.ErrorCode;
 import com.cinemaweb.API.Cinema.Web.configuration.CacheConfig;
 import com.cinemaweb.API.Cinema.Web.mapper.MovieMapper;
 import com.cinemaweb.API.Cinema.Web.repository.MovieRepository;
+import com.cinemaweb.API.Cinema.Web.search.MovieSearchService;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,9 @@ public class MovieService {
 
     @Autowired
     MovieMapper movieMapper;
+
+    @Autowired
+    MovieSearchService movieSearchService;
 
     // Public: chỉ trả phim không bị ENDED (đang chiếu + sắp chiếu).
     @Cacheable(value = CacheConfig.MOVIES, key = "'public'")
@@ -59,7 +63,8 @@ public class MovieService {
         if (movie.getStatus() == null) {
             movie.setStatus(MovieStatus.NOW_SHOWING);
         }
-        movieRepository.save(movie);
+        Movie saved = movieRepository.save(movie);
+        movieSearchService.upsert(saved); // đồng bộ chỉ mục tìm kiếm
     }
 
     @Caching(evict = {
@@ -71,7 +76,9 @@ public class MovieService {
                 -> new RuntimeException("Movie id not found"));
 
         movieMapper.updateMovie(movie, movieUpdateRequest);
-        return movieMapper.toMovieResponse(movieRepository.save(movie));
+        Movie saved = movieRepository.save(movie);
+        movieSearchService.upsert(saved); // đồng bộ chỉ mục tìm kiếm
+        return movieMapper.toMovieResponse(saved);
     }
 
     @Caching(evict = {
@@ -80,5 +87,6 @@ public class MovieService {
     })
     public void deleteMovie(String movieId) {
         movieRepository.deleteById(movieId);
+        movieSearchService.remove(Integer.parseInt(movieId)); // gỡ khỏi chỉ mục tìm kiếm
     }
 }

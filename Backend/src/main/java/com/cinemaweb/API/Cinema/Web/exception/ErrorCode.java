@@ -66,6 +66,10 @@ public enum ErrorCode {
     SCHEDULE_TIME_OVERLAP(6003, "Khung giờ chiếu bị trùng với suất chiếu khác trong cùng phòng!", HttpStatus.BAD_REQUEST),
     SEAT_HELD_BY_OTHER(6004, "Ghế đang được giữ bởi người khác!", HttpStatus.CONFLICT),
     HOLD_EXPIRED(6005, "Phiên giữ ghế đã hết hạn, vui lòng chọn lại!", HttpStatus.BAD_REQUEST),
+    PAYMENT_NOT_FOUND(6006, "Không tìm thấy giao dịch thanh toán!", HttpStatus.BAD_REQUEST),
+    PAYMENT_SIGNATURE_INVALID(6007, "Chữ ký thanh toán không hợp lệ!", HttpStatus.BAD_REQUEST),
+    PAYMENT_AMOUNT_MISMATCH(6008, "Số tiền thanh toán không khớp!", HttpStatus.BAD_REQUEST),
+    BOOKING_NOT_EXISTS(6009, "Đơn đặt vé không tồn tại!", HttpStatus.BAD_REQUEST),
 
     // ─────────────── 7xxx: Social (Comment & Friendship) Errors ───────────────
     COMMENT_NOT_EXISTS(7001, "Bình luận không tồn tại!", HttpStatus.BAD_REQUEST),

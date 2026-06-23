@@ -19,6 +19,7 @@ public class SeatScheduleResponse {
     char seatRow;
     int seatNumber;
     BigDecimal seatPrice;        // giá hiệu lực theo suất (seat_schedule.price)
-    String seatState;            // AVAILABLE / HELD / BOOKED
+    String seatState;            // AVAILABLE / HELD / BOOKED (HELD lấy từ Redis/booking PENDING)
     LocalDateTime heldUntil;     // thời điểm hết hạn giữ ghế (khi HELD)
+    boolean heldByMe;            // ghế đang được CHÍNH user gọi API này giữ
 }

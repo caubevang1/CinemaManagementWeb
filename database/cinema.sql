@@ -39,7 +39,12 @@ CREATE TABLE `booking` (
     `schedule_id` int NOT NULL,
     `price` decimal(12, 2) NOT NULL,
     `booking_day` datetime(6) DEFAULT NULL,
-    `user_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `user_id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    -- Hạn chót giữ ghế cho đơn PENDING (= heldUntil). Cron huỷ đơn quá hạn theo mốc này.
+    `expires_at` datetime DEFAULT NULL,
+    -- Trạng thái đơn (enum BookingStatus): PENDING (chờ thanh toán) | PAID | CANCELLED.
+    -- Ghế chỉ chuyển BOOKED khi PAID; PENDING hết hạn sẽ bị cron huỷ và nhả ghế.
+    `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDING',
     PRIMARY KEY (`booking_id`),
     KEY `fk_booking_user_idx` (`user_id`),
     KEY `fk_booking_schedule_idx` (`schedule_id`),
@@ -71,9 +76,9 @@ DROP TABLE IF EXISTS `booking_seat`;
 ;
 CREATE TABLE `booking_seat` (
     `id` int NOT NULL AUTO_INCREMENT,
-    `booking_id` int DEFAULT NULL,
-    `seat_schedule_id` int DEFAULT NULL,
-    `price` decimal(12, 2) DEFAULT NULL,
+    `booking_id` int NOT NULL,
+    `seat_schedule_id` int NOT NULL,
+    `price` decimal(12, 2) NOT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_booking_seat_seat_schedule` (`seat_schedule_id`),
     KEY `booking_id` (`booking_id`),
@@ -105,10 +110,10 @@ DROP TABLE IF EXISTS `bookingfoodanddrink`;
 ;
 CREATE TABLE `bookingfoodanddrink` (
     `booking_fd_id` int NOT NULL AUTO_INCREMENT,
-    `booking_id` int DEFAULT NULL,
-    `fd_id` int DEFAULT NULL,
-    `quantity` int DEFAULT NULL,
-    `price` decimal(12, 2) DEFAULT NULL,
+    `booking_id` int NOT NULL,
+    `fd_id` int NOT NULL,
+    `quantity` int NOT NULL,
+    `price` decimal(12, 2) NOT NULL,
     PRIMARY KEY (`booking_fd_id`),
     KEY `booking_id` (`booking_id`),
     KEY `fd_id` (`fd_id`),
@@ -126,6 +131,48 @@ LOCK TABLES `bookingfoodanddrink` WRITE;
 /*!40000 ALTER TABLE `bookingfoodanddrink` DISABLE KEYS */
 ;
 /*!40000 ALTER TABLE `bookingfoodanddrink` ENABLE KEYS */
+;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `payment`
+--
+
+DROP TABLE IF EXISTS `payment`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */
+;
+/*!50503 SET character_set_client = utf8mb4 */
+;
+CREATE TABLE `payment` (
+    `payment_id` int NOT NULL AUTO_INCREMENT,
+    `booking_id` int NOT NULL,
+    -- Mã giao dịch gửi sang VNPay (vnp_TxnRef), dùng để tra ngược khi callback.
+    `txn_ref` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `amount` decimal(12, 2) NOT NULL,
+    -- enum PaymentStatus: PENDING | SUCCESS | FAILED.
+    `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDING',
+    `method` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'VNPAY',
+    `bank_code` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `vnp_transaction_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `response_code` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `created_at` datetime NOT NULL,
+    `paid_at` datetime DEFAULT NULL,
+    PRIMARY KEY (`payment_id`),
+    UNIQUE KEY `uq_payment_txn_ref` (`txn_ref`),
+    KEY `idx_payment_booking` (`booking_id`),
+    CONSTRAINT `fk_payment_booking` FOREIGN KEY (`booking_id`) REFERENCES `booking` (`booking_id`) ON DELETE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */
+;
+
+--
+-- Dumping data for table `payment`
+--
+
+LOCK TABLES `payment` WRITE;
+/*!40000 ALTER TABLE `payment` DISABLE KEYS */
+;
+/*!40000 ALTER TABLE `payment` ENABLE KEYS */
 ;
 UNLOCK TABLES;
 
@@ -465,19 +512,15 @@ CREATE TABLE `seat_schedule` (
     `seat_schedule_id` int NOT NULL AUTO_INCREMENT,
     `schedule_id` int NOT NULL,
     `seat_id` int NOT NULL,
-    -- 3 trạng thái thay cho boolean: AVAILABLE / HELD / BOOKED.
+    -- Trạng thái lưu ở DB chỉ còn AVAILABLE / BOOKED. HELD (giữ tạm) nằm ở Redis (TTL tự hết hạn).
     `seat_state` varchar(20) NOT NULL DEFAULT 'AVAILABLE',
-    `held_until` datetime DEFAULT NULL,
-    `held_by_user_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
     `version` bigint NOT NULL DEFAULT 0,
     `price` decimal(12, 2) DEFAULT NULL,
     PRIMARY KEY (`seat_schedule_id`),
     UNIQUE KEY `uq_seat_schedule_schedule_seat` (`schedule_id`, `seat_id`),
     KEY `seat_schedule_ibfk_2` (`seat_id`),
-    KEY `fk_seat_schedule_held_by_idx` (`held_by_user_id`),
     CONSTRAINT `seat_schedule_ibfk_1` FOREIGN KEY (`schedule_id`) REFERENCES `schedule` (`schedule_id`),
-    CONSTRAINT `seat_schedule_ibfk_2` FOREIGN KEY (`seat_id`) REFERENCES `seat` (`seat_id`),
-    CONSTRAINT `fk_seat_schedule_held_by` FOREIGN KEY (`held_by_user_id`) REFERENCES `user` (`user_id`) ON DELETE SET NULL
+    CONSTRAINT `seat_schedule_ibfk_2` FOREIGN KEY (`seat_id`) REFERENCES `seat` (`seat_id`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 3 DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */
 ;
@@ -577,7 +620,7 @@ DROP TABLE IF EXISTS `comment`;
 ;
 CREATE TABLE `comment` (
     `comment_id` int NOT NULL AUTO_INCREMENT,
-    `user_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `user_id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
     `movie_id` int NOT NULL,
     `parent_id` int DEFAULT NULL,
     `content` text NOT NULL,
@@ -616,8 +659,8 @@ DROP TABLE IF EXISTS `friendship`;
 ;
 CREATE TABLE `friendship` (
     `friendship_id` int NOT NULL AUTO_INCREMENT,
-    `requester_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `addressee_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `requester_id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `addressee_id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
     `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
     `created_at` datetime NOT NULL,
     `responded_at` datetime DEFAULT NULL,
@@ -655,8 +698,8 @@ DROP TABLE IF EXISTS `chat_message`;
 ;
 CREATE TABLE `chat_message` (
     `message_id` int NOT NULL AUTO_INCREMENT,
-    `sender_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `recipient_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `sender_id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `recipient_id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
     `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
     `type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'TEXT',
     `transfer_id` int DEFAULT NULL,
@@ -698,8 +741,8 @@ DROP TABLE IF EXISTS `ticket_transfer`;
 CREATE TABLE `ticket_transfer` (
     `transfer_id` int NOT NULL AUTO_INCREMENT,
     `booking_id` int NOT NULL,
-    `from_user_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    `to_user_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `from_user_id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `to_user_id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
     `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
     `created_at` datetime NOT NULL,
     `responded_at` datetime DEFAULT NULL,
@@ -723,6 +766,16 @@ LOCK TABLES `ticket_transfer` WRITE;
 /*!40000 ALTER TABLE `ticket_transfer` ENABLE KEYS */
 ;
 UNLOCK TABLES;
+
+--
+-- FK của chat_message.transfer_id (thêm sau cùng vì tham chiếu bảng ticket_transfer
+-- được tạo phía dưới chat_message). Tin nhắn loại TRANSFER nhúng id lời mời chuyển vé.
+--
+ALTER TABLE `chat_message`
+    ADD KEY `fk_chat_transfer` (`transfer_id`),
+    ADD CONSTRAINT `fk_chat_transfer` FOREIGN KEY (`transfer_id`)
+        REFERENCES `ticket_transfer` (`transfer_id`) ON DELETE SET NULL;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */
 ;
 

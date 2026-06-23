@@ -1,16 +1,14 @@
 package com.cinemaweb.API.Cinema.Web.scheduler;
 
 
-import com.cinemaweb.API.Cinema.Web.repository.SeatScheduleRepository;
+import com.cinemaweb.API.Cinema.Web.service.BookingService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -19,16 +17,16 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class ScheduledTasks {
 
-    // OTP quên mật khẩu và token thu hồi nay đều lưu trong Redis, tự hết hạn theo TTL -> không cần dọn thủ công.
-    SeatScheduleRepository seatScheduleRepository;
+    // Giữ ghế tạm (HELD) nay nằm ở Redis với TTL tự hết hạn -> không cần cron nhả ghế nữa.
+    // OTP/token thu hồi cũng lưu Redis tự hết hạn. Chỉ còn dọn đơn PENDING bỏ ngang ở VNPay.
+    BookingService bookingService;
 
-    // Nhả các ghế giữ tạm (HELD) đã quá held_until về AVAILABLE để người khác đặt được.
+    // Huỷ các đơn PENDING quá hạn giữ ghế (user bỏ ngang thanh toán) và nhả ghế về AVAILABLE.
     @Scheduled(fixedDelay = 1, timeUnit = TimeUnit.MINUTES)
-    @Transactional
-    public void releaseExpiredSeatHolds() {
-        int released = seatScheduleRepository.releaseExpiredHolds(LocalDateTime.now());
-        if (released > 0) {
-            log.info("Scheduled task: RELEASED_EXPIRED_SEAT_HOLDS count={}", released);
+    public void cancelExpiredPendingBookings() {
+        int cancelled = bookingService.cancelExpiredPendingBookings();
+        if (cancelled > 0) {
+            log.info("Scheduled task: CANCELLED_EXPIRED_PENDING_BOOKINGS count={}", cancelled);
         }
     }
 }

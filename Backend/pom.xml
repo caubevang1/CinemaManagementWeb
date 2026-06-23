@@ -20,6 +20,7 @@
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
         <spotless.version>2.43.0</spotless.version>
+        <redisson.version>3.52.0</redisson.version>
     </properties>
     
     <dependencies>
@@ -104,6 +105,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
+        <!-- RabbitMQ: tách side-effect sau thanh toán (gửi email vé...) ra worker chạy ngầm,
+             có retry + dead-letter. IPN chỉ cập nhật DB rồi đẩy message và ack VNPay ngay. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
@@ -122,6 +129,25 @@
             <groupId>com.cloudinary</groupId>
             <artifactId>cloudinary-http44</artifactId>
             <version>1.39.0</version>
+        </dependency>
+        <!-- Redisson: client Redis (Netty) duy nhất cho cache/token/presence (qua RedissonConnectionFactory
+             của Spring Data) và full-text search (RSearch). Yêu cầu Redis Stack (RediSearch) — xem docker-compose.
+             Starter 3.52.0 build cho Spring Boot 3.5 → loại redisson-spring-data-35, thay bằng -34 cho Spring Data Redis 3.4. -->
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson-spring-boot-starter</artifactId>
+            <version>${redisson.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.redisson</groupId>
+                    <artifactId>redisson-spring-data-35</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson-spring-data-34</artifactId>
+            <version>${redisson.version}</version>
         </dependency>
     </dependencies>
 

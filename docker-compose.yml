@@ -17,13 +17,49 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    # Redis Stack = Redis core + RediSearch + RedisJSON (cần cho tìm kiếm phim qua Redis OM).
+    # Superset của redis:7 nên cache/token/presence cũ vẫn chạy nguyên vẹn (giữ port + volume).
+    image: redis/redis-stack-server:7.4.0-v6
     container_name: cinemaweb-redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
 
+  rabbitmq:
+    # Broker cho luồng phát vé sau thanh toán. Bản -management kèm UI quản trị ở cổng 15672
+    # (đăng nhập guest/guest) để xem queue/DLQ và message khi debug.
+    image: rabbitmq:3-management
+    container_name: cinemaweb-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ngrok:
+    # Tunnel public -> app Spring chạy trên HOST (cổng 8080), để VNPay gọi được IPN từ internet.
+    # App KHÔNG chạy trong compose nên trỏ qua host.docker.internal. Cần NGROK_AUTHTOKEN trong .env
+    # (lấy ở https://dashboard.ngrok.com). Lấy URL public + soi request IPN ở web inspector :4040.
+    image: ngrok/ngrok:latest
+    container_name: cinemaweb-ngrok
+    # Dùng static domain (--url) -> URL public cố định, không đổi khi restart nên không phải
+    # cập nhật IPN URL trên VNPay portal mỗi lần. Khai báo NGROK_DOMAIN trong .env (gốc).
+    command: [ "http", "--url=${NGROK_DOMAIN}", "host.docker.internal:8080" ]
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    ports:
+      - "4040:4040"
+    extra_hosts:
+      # Cần cho Linux để host.docker.internal trỏ về máy host (Docker Desktop Win/Mac có sẵn).
+      - "host.docker.internal:host-gateway"
+
 volumes:
   mysql_data:
   redis_data:
+  rabbitmq_data:

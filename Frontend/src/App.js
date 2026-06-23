@@ -29,6 +29,7 @@ import AddRoom from './pages/Admin/Room/AddRoom';
 import SeatManager from './pages/Admin/Room/Seat';
 import Schedule from './pages/Admin/Film/Schedule';
 import Messages from './pages/User/Messages';
+import PaymentResult from './pages/User/PaymentResult';
 import FoodCombo from './pages/Admin/FoodCombo/FoodCombo';
 import AddFoodCombo from './pages/Admin/FoodCombo/AddFoodCombo';
 import EditFoodCombo from './pages/Admin/FoodCombo/EditFoodCombo';
@@ -48,6 +49,7 @@ function App() {
                     <Route path='aboutapp' element={<AboutApp />} />
                     <Route path='news' element={<News />} />
                     <Route path='booking/:id' element={<BookingTicket />} />
+                    <Route path='payment-result' element={<PaymentResult />} />
                     <Route path="/forget-password" element={<ForgotPassword />} />
                     <Route path="reset-password/:otp" element={<ResetPassword />} />
                     <Route path='messages' element={<Messages />} />

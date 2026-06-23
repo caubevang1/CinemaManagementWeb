@@ -7,7 +7,6 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Entity
 @Data
@@ -29,18 +28,11 @@ public class SeatSchedule {
     @JoinColumn(name = "seat_id")
     Seat seat;
 
-    // AVAILABLE / HELD / BOOKED (thay cho boolean cũ).
+    // Trạng thái lưu ở DB chỉ còn AVAILABLE / BOOKED. Trạng thái HELD (giữ tạm) nay nằm
+    // hoàn toàn ở Redis (key seat_hold:{id}, TTL tự hết hạn) — xem SeatScheduleService.
     @Enumerated(EnumType.STRING)
     @Column(name = "seat_state")
     SeatState seatState;
-
-    // Hết hạn giữ ghế tạm: khi seatState = HELD, sau mốc này cron sẽ tự nhả về AVAILABLE.
-    LocalDateTime heldUntil;
-
-    // Ai đang giữ ghế (để chỉ người giữ mới được đặt tiếp).
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "held_by_user_id")
-    User heldBy;
 
     // Chốt chặn optimistic-lock bổ trợ cho pessimistic lock + UNIQUE(booking_seat).
     @Version

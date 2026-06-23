@@ -1,16 +1,50 @@
-import React, { useEffect, useState } from 'react';
-import { Tabs } from 'antd';
+import React, { useCallback, useEffect, useState } from 'react';
+import { AutoComplete, Tabs } from 'antd';
+import { debounce } from 'lodash';
 import MultipleRowSlick from './MultipleRowSlick';
 import BookingTicketNow from './BookingTicketNow';
 import { useLocation } from 'react-router-dom';
 import useRoute from '../../hooks/useRoute';
+import { GoiYTenPhim, TimKiemPhim } from '../../services/FilmService';
 
 export default function MovieList(props) {
     const { arrFilm } = props;
     const [keyword, setKeyword] = useState('');
+    const [options, setOptions] = useState([]); // gợi ý autocomplete
+    const [results, setResults] = useState(null); // null = chưa tìm, hiển thị toàn bộ arrFilm
     const { navigate } = useRoute();
 
     const location = useLocation();
+
+    // Gọi server-side RediSearch + lấy gợi ý; debounce để hạn chế request khi gõ.
+    const runSearch = useCallback(
+        debounce(async (value) => {
+            const term = value.trim();
+            if (term === '') {
+                setResults(null);
+                setOptions([]);
+                return;
+            }
+            try {
+                const [resList, resSuggest] = await Promise.all([
+                    TimKiemPhim(term),
+                    GoiYTenPhim(term),
+                ]);
+                setResults(resList.data.body);
+                setOptions((resSuggest.data.body || []).map((name) => ({ value: name })));
+            } catch (error) {
+                console.log(error);
+            }
+        }, 300),
+        []
+    );
+
+    const onSearchChange = (value) => {
+        setKeyword(value);
+        runSearch(value);
+    };
+
+    const moviesToShow = results === null ? arrFilm : results;
 
     useEffect(() => {
         if (location.hash) {
@@ -48,41 +82,19 @@ export default function MovieList(props) {
             {/* Mobile */}
             <div className="block mt-16 sm:mt-8 md:mt-0 md:hidden">
                 <div className="relative mb-4">
-                    <div className="absolute inset-y-0 left-0 flex items-center pl-3">
-                        <svg
-                            aria-hidden="true"
-                            className="w-5 h-5 text-gray-500 dark:text-gray-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                            />
-                        </svg>
-                    </div>
-                    <input
-                        onChange={(e) => setKeyword(e.target.value)}
-                        type="search"
-                        className="block w-full p-4 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 outline-none border-none"
+                    <AutoComplete
+                        className="w-full"
+                        value={keyword}
+                        options={options}
+                        onChange={onSearchChange}
+                        onSelect={onSearchChange}
                         placeholder="Nhập tên phim cần tìm"
+                        size="large"
+                        allowClear
                     />
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
-                    {arrFilm
-                        .filter((item) => {
-                            if (keyword === '') {
-                                return item;
-                            } else {
-                                let keyLower = keyword.toLocaleLowerCase();
-                                let itemLower = item.movieName.toLocaleLowerCase();
-                                return itemLower.includes(keyLower);
-                            }
-                        })
+                    {moviesToShow
                         .map((itemFilm, index) => (
                             <div
                                 key={index}

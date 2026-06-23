@@ -7,6 +7,7 @@ import { NavLink } from 'react-router-dom';
 import { EditOutlined, DeleteOutlined, CalendarOutlined } from '@ant-design/icons';
 import Swal from 'sweetalert2';
 import { debounce } from 'lodash';
+import { TimKiemPhim } from '../../../services/FilmService';
 
 const { Search } = Input;
 
@@ -29,18 +30,20 @@ export default function Film() {
         setData(arrFilm);
     }, [arrFilm]);
 
+    // Tìm kiếm phía server qua RediSearch; ô rỗng → hiển thị lại toàn bộ danh sách từ Redux.
     const searchKeyword = useCallback(
-        debounce((value) => {
-            setData(arrFilm.filter(item => {
-                if (value.trim() === '') {
-                    return item;
-                } else {
-                    let keyLower = value.toLowerCase();
-                    let itemLower = item.movieName.toLowerCase();
-                    return itemLower.includes(keyLower);
-                }
-            }));
-        }, 200),
+        debounce(async (value) => {
+            if (value.trim() === '') {
+                setData(arrFilm);
+                return;
+            }
+            try {
+                const res = await TimKiemPhim(value.trim());
+                setData(res.data.body);
+            } catch (error) {
+                console.log(error);
+            }
+        }, 300),
         [arrFilm]
     );
 

@@ -6,7 +6,10 @@ import com.cinemaweb.API.Cinema.Web.dto.request.BookingSeatRequest;
 import com.cinemaweb.API.Cinema.Web.dto.response.BookingFoodAndDrinkResponse;
 import com.cinemaweb.API.Cinema.Web.dto.response.BookingResponse;
 import com.cinemaweb.API.Cinema.Web.dto.response.SeatResponse;
+import com.cinemaweb.API.Cinema.Web.configuration.ConfigPayment;
 import com.cinemaweb.API.Cinema.Web.entity.*;
+import com.cinemaweb.API.Cinema.Web.enums.BookingStatus;
+import com.cinemaweb.API.Cinema.Web.enums.PaymentStatus;
 import com.cinemaweb.API.Cinema.Web.enums.SeatState;
 import com.cinemaweb.API.Cinema.Web.enums.TicketTransferStatus;
 import com.cinemaweb.API.Cinema.Web.exception.AppException;
@@ -16,7 +19,9 @@ import com.cinemaweb.API.Cinema.Web.mapper.BookingMapper;
 import com.cinemaweb.API.Cinema.Web.mapper.BookingSeatMapper;
 import com.cinemaweb.API.Cinema.Web.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +32,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -60,6 +66,16 @@ public class BookingService {
 
     @Autowired
     private TicketTransferRepository ticketTransferRepository;
+
+    @Autowired
+    private PaymentRepository paymentRepository;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    // Thời hạn giữ ghế tạm (phút) khi user đang thanh toán — đồng bộ với SeatScheduleService.
+    @Value("${booking.hold-minutes:8}")
+    private long holdMinutes;
 
     public BookingResponse getBooking(String bookingId) {
         int bookingIdInt = Integer.parseInt(bookingId);
@@ -126,13 +142,18 @@ public class BookingService {
         return bookingResponses;
     }
 
+    // Tạo đơn đặt vé ở trạng thái PENDING: giữ ghế HELD (chưa BOOKED) + tạo bản ghi payment
+    // PENDING. Ghế chỉ chuyển BOOKED khi thanh toán thành công (confirmBookingPaid). Trả về
+    // Payment để controller dựng URL VNPay redirect người dùng sang thanh toán.
     @Transactional
-    public void createBooking(BookingRequest bookingRequest) {
+    public Payment createBooking(BookingRequest bookingRequest) {
         var context = SecurityContextHolder.getContext();
         String id = context.getAuthentication().getName();
         User user = userRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTS));
 
-        // ── 1) Tính tiền ghế (kèm khóa bi quan + validate trạng thái) ──
+        LocalDateTime now = LocalDateTime.now();
+
+        // ── 1) Tính tiền ghế + re-validate (check lại lần nữa qua Redis) trước khi tạo đơn ──
         BigDecimal seatPrice = BigDecimal.ZERO;
         List<BookingSeatRequest> bookingSeats = bookingRequest.getSeats();
         List<Integer> seatScheduleIds = bookingSeats.stream()
@@ -145,26 +166,27 @@ public class BookingService {
             throw new AppException(ErrorCode.SEAT_SCHEDULE_NOT_EXISTS);
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        // Deadline đơn = mốc hết hạn giữ ghế sớm nhất còn lại trong Redis (giữ nguyên đồng hồ,
+        // không reset). Nếu ghế chưa được pre-hold thì mặc định now + holdMinutes.
+        long remainingTtlSeconds = holdMinutes * 60;
         for (SeatSchedule seatSchedule : seatSchedules) {
-            // Chỉ đặt được khi ghế đang trống, hoặc đang được CHÍNH user này giữ và chưa hết hạn.
-            boolean heldByMe = seatSchedule.getSeatState() == SeatState.HELD
-                    && seatSchedule.getHeldBy() != null
-                    && id.equals(seatSchedule.getHeldBy().getID())
-                    && seatSchedule.getHeldUntil() != null
-                    && seatSchedule.getHeldUntil().isAfter(now);
             if (seatSchedule.getSeatState() == SeatState.BOOKED) {
                 throw new AppException(ErrorCode.SEAT_ALREADY_BOOKED);
             }
-            if (seatSchedule.getSeatState() == SeatState.HELD && !heldByMe) {
+            String key = SeatScheduleService.holdKey(seatSchedule.getSeatScheduleId());
+            String holder = redisTemplate.opsForValue().get(key);
+            if (holder != null && !id.equals(holder)) {
                 throw new AppException(ErrorCode.SEAT_HELD_BY_OTHER);
             }
-
-            seatSchedule.setSeatState(SeatState.BOOKED);
-            seatSchedule.setHeldUntil(null);
-            seatSchedule.setHeldBy(null);
+            if (id.equals(holder)) {
+                Long ttl = redisTemplate.getExpire(key, TimeUnit.SECONDS);
+                if (ttl != null && ttl > 0) {
+                    remainingTtlSeconds = Math.min(remainingTtlSeconds, ttl);
+                }
+            }
             seatPrice = seatPrice.add(seatSchedule.getPrice());
         }
+        LocalDateTime expiresAt = now.plusSeconds(remainingTtlSeconds);
 
         // ── 2) Tính tiền đồ ăn (dựng sẵn entity, chưa gắn booking) ──
         BigDecimal foodAndDrinksPrice = BigDecimal.ZERO;
@@ -186,11 +208,14 @@ public class BookingService {
             }
         }
 
-        // ── 3) Tạo Booking với price chuẩn ngay từ đầu, lưu đúng 1 lần ──
+        // ── 3) Tạo Booking PENDING với price chuẩn ngay từ đầu, lưu đúng 1 lần ──
         BigDecimal totalPrice = seatPrice.add(foodAndDrinksPrice);
         Booking booking = bookingMapper.toCreationBooking(bookingRequest);
         booking.setUser(user);
         booking.setPrice(totalPrice);
+        booking.setBookingDay(now);
+        booking.setExpiresAt(expiresAt);
+        booking.setStatus(BookingStatus.PENDING);
         bookingRepository.save(booking);
 
         // ── 4) Gắn booking vào các bảng con rồi lưu ──
@@ -210,11 +235,70 @@ public class BookingService {
         } catch (DataIntegrityViolationException ex) {
             throw new AppException(ErrorCode.SEAT_ALREADY_BOOKED);
         }
-        seatScheduleRepository.saveAll(seatSchedules);
+        // Đã có hard hold ở DB (booking_seat + UNIQUE) -> nhả soft hold Redis để khỏi đếm trùng.
+        for (SeatSchedule seatSchedule : seatSchedules) {
+            redisTemplate.delete(SeatScheduleService.holdKey(seatSchedule.getSeatScheduleId()));
+        }
 
         for (BookingFoodAndDrink bookingFoodAndDrink : bookingFoodAndDrinkEntities) {
             bookingFoodAndDrink.setBooking(booking);
             bookingFoodAndDrinkRepository.save(bookingFoodAndDrink);
         }
+
+        // ── 5) Tạo bản ghi payment PENDING (txn_ref dùng để tra ngược khi VNPay callback) ──
+        Payment payment = Payment.builder()
+                .booking(booking)
+                .txnRef(ConfigPayment.getRandomNumber(8))
+                .amount(totalPrice)
+                .status(PaymentStatus.PENDING)
+                .method("VNPAY")
+                .createdAt(now)
+                .build();
+        return paymentRepository.save(payment);
+    }
+
+    // Thanh toán thành công: đơn -> PAID, ghế (đang hard hold qua booking_seat) chuyển BOOKED.
+    @Transactional
+    public void confirmBookingPaid(Booking booking) {
+        booking.setStatus(BookingStatus.PAID);
+        bookingRepository.save(booking);
+        for (BookingSeat bs : bookingSeatRepository.findAllByBooking_BookingId(booking.getBookingId())
+                .orElse(List.of())) {
+            SeatSchedule ss = bs.getSeatSchedule();
+            ss.setSeatState(SeatState.BOOKED);
+            seatScheduleRepository.save(ss);
+        }
+    }
+
+    // Huỷ đơn PENDING (thanh toán thất bại/huỷ hoặc hết hạn): xoá booking_seat + đồ ăn để nhả
+    // ghế (seat_state vẫn AVAILABLE vì DB không còn cờ HELD), đơn -> CANCELLED. Idempotent.
+    @Transactional
+    public void cancelBooking(Booking booking) {
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            return;
+        }
+        List<BookingSeat> seats = bookingSeatRepository.findAllByBooking_BookingId(booking.getBookingId())
+                .orElse(List.of());
+        // Nhả luôn soft hold Redis còn sót (phòng hờ; createBooking thường đã xoá).
+        for (BookingSeat bs : seats) {
+            redisTemplate.delete(SeatScheduleService.holdKey(bs.getSeatSchedule().getSeatScheduleId()));
+        }
+        // Xoá booking_seat để giải phóng UNIQUE(seat_schedule_id) cho lần đặt sau.
+        bookingSeatRepository.deleteAll(seats);
+        bookingFoodAndDrinkRepository.deleteAll(
+                bookingFoodAndDrinkRepository.findByBooking_BookingId(booking.getBookingId()));
+        booking.setStatus(BookingStatus.CANCELLED);
+        bookingRepository.save(booking);
+    }
+
+    // Cron: huỷ các đơn PENDING đã quá hạn giữ ghế (expires_at) và nhả ghế.
+    @Transactional
+    public int cancelExpiredPendingBookings() {
+        List<Booking> expired = bookingRepository.findByStatusAndExpiresAtBefore(
+                BookingStatus.PENDING, LocalDateTime.now());
+        for (Booking booking : expired) {
+            cancelBooking(booking);
+        }
+        return expired.size();
     }
 }

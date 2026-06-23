@@ -12,6 +12,22 @@ spring:
     redis:
       host: localhost
       port: 6379
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    listener:
+      simple:
+        # Retry khi worker xử lý lỗi (vd SMTP down). Cạn lượt -> reject -> message rơi vào DLQ.
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 2s
+          multiplier: 2
+          max-interval: 10s
+        # Không requeue vô hạn message lỗi: để nó đi tới dead-letter exchange.
+        default-requeue-rejected: false
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -28,8 +44,8 @@ spring:
       max-file-size: 5MB
       max-request-size: 5MB
   mail:
-    host: smtp.gmail.com
-    port: 587
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
     username: ${MAIL_USERNAME}
     password: ${MAIL_PASSWORD}
     properties:
@@ -38,9 +54,11 @@ spring:
           auth: true
           starttls:
             enable: true
-            required: true
-          ssl:
-            trust: smtp.gmail.com
+
+# Địa chỉ From cho email (phải là sender đã verify trong Brevo). Khác với spring.mail.username
+# (đó là SMTP login). Đọc từ MAIL_FROM.
+mail:
+  from: ${MAIL_FROM}
 
 jwt:
   signerKey: ${JWT_SIGNER_KEY}

@@ -19,6 +19,7 @@ public class BookingResponse {
     int bookingId;
     String roomName;
     String cinemaName;
+    String cinemaAddress;
     String movieName;
     List<BookingSeatResponse> seats;
     String username;

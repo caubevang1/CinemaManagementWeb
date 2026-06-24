@@ -4,6 +4,7 @@ import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import com.cinemaweb.API.Cinema.Web.exception.AppException;
 import com.cinemaweb.API.Cinema.Web.exception.ErrorCode;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -32,6 +33,7 @@ public class CloudinaryService {
     private static final Pattern PUBLIC_ID_PATTERN =
             Pattern.compile("/upload/(?:v\\d+/)?(.+?)(?:\\.[a-zA-Z0-9]+)?$");
 
+    @CircuitBreaker(name = "cloudinary", fallbackMethod = "uploadFallback")
     public String upload(MultipartFile file, String folder) {
         if (file == null || file.isEmpty())
             throw new AppException(ErrorCode.FILE_EMPTY);
@@ -49,6 +51,11 @@ public class CloudinaryService {
             log.error("Cloudinary upload failed: {}", e.getMessage());
             throw new AppException(ErrorCode.UPLOAD_FAILED);
         }
+    }
+
+    private String uploadFallback(MultipartFile file, String folder, Throwable t) {
+        log.warn("Cloudinary circuit open for upload: {}", t.getMessage());
+        throw new AppException(ErrorCode.UPLOAD_FAILED);
     }
 
     /**

@@ -11,6 +11,7 @@ import { LOCALSTORAGE_USER } from '../../utils/constant';
 import popcornImg from '../../assets/img/popcorn2.png';
 import UserAvatar from '../../components/UserAvatar';
 import TransferPinModal from '../../components/TransferPinModal';
+import { DangXuat } from '../../services/UserService';
 
 const Header = () => {
     const navBarRef = useRef(null);
@@ -60,8 +61,15 @@ const Header = () => {
             icon: 'question',
             iconColor: 'rgb(104 217 254)',
             confirmButtonColor: '#f97316'
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed) {
+                // Gọi backend để thu hồi phiên + xóa cookie refresh. Dù API lỗi vẫn
+                // dọn state phía client để header trở về trạng thái chưa đăng nhập.
+                try {
+                    await DangXuat();
+                } catch (error) {
+                    console.error('Lỗi khi đăng xuất:', error);
+                }
                 SwalConfig('Đã đăng xuất', 'success', false);
                 removeLocalStorage(LOCALSTORAGE_USER);
                 dispatch(setStatusLogin(false));

@@ -11,10 +11,12 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface BookingFoodAndDrinkMapper {
     @Mapping(source = "foodAndDrink.foodAndDrinkId", target = "foodAndDrinkId")
+    @Mapping(source = "foodAndDrink.foodAndDrinkName", target = "foodAndDrinkName")
     @Mapping(source = "booking.bookingId", target = "bookingId")
     BookingFoodAndDrinkResponse toBookingFoodAndDrink(BookingFoodAndDrink bookingFoodAndDrink);
 
     @Mapping(source = "foodAndDrink.foodAndDrinkId", target = "foodAndDrinkId")
+    @Mapping(source = "foodAndDrink.foodAndDrinkName", target = "foodAndDrinkName")
     @Mapping(source = "booking.bookingId", target = "bookingId")
     List<BookingFoodAndDrinkResponse> toListBookingFoodAndDrinks(List<BookingFoodAndDrink> listBookingFoodAndDrink);
 

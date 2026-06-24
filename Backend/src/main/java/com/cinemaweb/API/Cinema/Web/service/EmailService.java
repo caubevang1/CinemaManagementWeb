@@ -1,7 +1,11 @@
 package com.cinemaweb.API.Cinema.Web.service;
 
 import com.cinemaweb.API.Cinema.Web.dto.response.BookingResponse;
+import com.cinemaweb.API.Cinema.Web.dto.response.BookingSeatResponse;
 import com.cinemaweb.API.Cinema.Web.entity.User;
+import com.cinemaweb.API.Cinema.Web.exception.AppException;
+import com.cinemaweb.API.Cinema.Web.exception.ErrorCode;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -14,6 +18,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +34,7 @@ public class EmailService {
     @NonFinal
     String fromAddress;
 
+    @CircuitBreaker(name = "email", fallbackMethod = "sendResetPasswordOtpFallback")
     public void sendResetPasswordOtp(User user, String otpToken) throws MailException {
         String resetLink = "http://localhost:5173/reset-password/" + otpToken;
         SimpleMailMessage message = new SimpleMailMessage();
@@ -42,6 +49,11 @@ public class EmailService {
         mailSender.send(message);
     }
 
+    private void sendResetPasswordOtpFallback(User user, String otpToken, Throwable t) {
+        log.warn("Email circuit open for sendResetPasswordOtp user={}: {}", user.getUsername(), t.getMessage());
+        throw new AppException(ErrorCode.EMAIL_SERVICE_UNAVAILABLE);
+    }
+
     // Gửi email xác nhận vé sau khi thanh toán thành công. Được gọi bởi worker RabbitMQ
     // (BookingPaidListener) — tách khỏi luồng thanh toán nên SMTP chậm/lỗi không ảnh hưởng đơn.
     public void sendTicketEmail(String email, BookingResponse booking) throws MailException {
@@ -49,7 +61,6 @@ public class EmailService {
             log.warn("Skip ticket email: no recipient for bookingId={}", booking.getBookingId());
             return;
         }
-        int seatCount = booking.getSeats() == null ? 0 : booking.getSeats().size();
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(email);
         message.setFrom(fromAddress);
@@ -59,12 +70,37 @@ public class EmailService {
                 + "Mã đơn: " + booking.getBookingId() + "\n"
                 + "Phim: " + booking.getMovieName() + "\n"
                 + "Rạp: " + booking.getCinemaName() + "\n"
+                + "Địa chỉ: " + booking.getCinemaAddress() + "\n"
                 + "Phòng: " + booking.getRoomName() + "\n"
-                + "Số ghế: " + seatCount + "\n"
+                + "Ghế: " + formatSeats(booking) + "\n"
+                + "Đồ ăn/thức uống:\n" + formatFoodAndDrinks(booking) + "\n"
                 + "Tổng tiền: " + booking.getPrice() + " VND\n\n"
                 + "Vui lòng xuất trình email này tại quầy. Chúc bạn xem phim vui vẻ!");
         mailSender.send(message);
         log.info("Sent ticket email bookingId={} to={}", booking.getBookingId(), email);
+    }
+
+    // Danh sách ghế thật (vd "A1, A2, B5"), sort cho gọn. "Không" nếu trống.
+    private String formatSeats(BookingResponse booking) {
+        if (booking.getSeats() == null || booking.getSeats().isEmpty()) {
+            return "Không";
+        }
+        return booking.getSeats().stream()
+                .map(BookingSeatResponse::getSeatLabel)
+                .filter(Objects::nonNull)
+                .sorted()
+                .collect(Collectors.joining(", "));
+    }
+
+    // Danh sách đồ ăn/thức uống đầy đủ (tên x số lượng - giá), mỗi món một dòng. "Không" nếu trống.
+    private String formatFoodAndDrinks(BookingResponse booking) {
+        if (booking.getFoodAndDrinks() == null || booking.getFoodAndDrinks().isEmpty()) {
+            return "Không";
+        }
+        return booking.getFoodAndDrinks().stream()
+                .map(f -> "- " + f.getFoodAndDrinkName() + " x" + f.getQuantity()
+                        + " - " + f.getPrice() + " VND")
+                .collect(Collectors.joining("\n"));
     }
 
 }

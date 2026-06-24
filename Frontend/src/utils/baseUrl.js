@@ -61,6 +61,13 @@ http.interceptors.response.use(
             return Promise.reject(error);
         }
 
+        // Login thất bại (sai mật khẩu) trả 401 → KHÔNG được kích hoạt refresh.
+        // Nếu không, cookie refresh của phiên cũ sẽ "đăng nhập lén" thành công và
+        // cắm access token vào localStorage dù mật khẩu sai. Để Login.jsx hiện toast lỗi.
+        if (original.url?.includes('/auth/login')) {
+            return Promise.reject(error);
+        }
+
         if (error.response?.status === 401 && !original._retry) {
             original._retry = true;
 

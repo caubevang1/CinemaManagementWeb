@@ -8,6 +8,8 @@ export const DangNhap = userLogin => http.post('/auth/login', userLogin)
 
 export const DangKy = userRegister => http.post('/users/sign-up', userRegister)
 
+export const DangXuat = () => http.post('/auth/logout')
+
 export const LayDanhSachNguoiDung = () => http.get(`/users`)
 
 export const XoaNguoiDung = (ID) => http.delete(`/users/${ID}`)

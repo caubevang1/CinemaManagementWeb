@@ -6,12 +6,20 @@ management:
     web:
       exposure:
         include: health,caches,metrics
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
+    mail:
+      enabled: false      # tắt active SMTP ping; 'email' circuit breaker đã phản ánh sức khỏe dịch vụ mail
 
 spring:
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
@@ -54,6 +62,9 @@ spring:
           auth: true
           starttls:
             enable: true
+          connectiontimeout: 3000
+          timeout: 3000
+          writetimeout: 3000
 
 # Địa chỉ From cho email (phải là sender đã verify trong Brevo). Khác với spring.mail.username
 # (đó là SMTP login). Đọc từ MAIL_FROM.
@@ -82,5 +93,28 @@ cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME}
   api-key: ${CLOUDINARY_API_KEY}
   api-secret: ${CLOUDINARY_API_SECRET}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      cloudinary:
+        sliding-window-size: 5
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 30s
+        permitted-calls-in-half-open-state: 2
+        register-health-indicator: true
+      email:
+        sliding-window-size: 5
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 60s
+        permitted-calls-in-half-open-state: 2
+        register-health-indicator: true
+      tmdb:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-calls-in-half-open-state: 3
+        register-health-indicator: true
+
 
 

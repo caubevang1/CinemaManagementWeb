@@ -42,6 +42,33 @@ services:
       timeout: 5s
       retries: 5
 
+  backend:
+    build: ./Backend
+    container_name: cinemaweb-backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./Backend/.env
+    environment:
+      REDIS_HOST: redis
+      RABBITMQ_HOST: cinemaweb-rabbitmq
+      DB_URL: jdbc:mysql://cinemaweb-mysql:3306/cinemaweb?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+  frontend:
+    build: ./Frontend
+    container_name: cinemaweb-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
   ngrok:
     # Tunnel public -> app Spring chạy trên HOST (cổng 8080), để VNPay gọi được IPN từ internet.
     # App KHÔNG chạy trong compose nên trỏ qua host.docker.internal. Cần NGROK_AUTHTOKEN trong .env
@@ -50,7 +77,7 @@ services:
     container_name: cinemaweb-ngrok
     # Dùng static domain (--url) -> URL public cố định, không đổi khi restart nên không phải
     # cập nhật IPN URL trên VNPay portal mỗi lần. Khai báo NGROK_DOMAIN trong .env (gốc).
-    command: [ "http", "--url=${NGROK_DOMAIN}", "host.docker.internal:8080" ]
+    command: [ "http", "--url=${NGROK_DOMAIN}", "cinemaweb-backend:8080" ]
     environment:
       NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
     ports:

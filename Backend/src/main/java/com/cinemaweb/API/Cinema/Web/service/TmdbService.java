@@ -1,10 +1,14 @@
 package com.cinemaweb.API.Cinema.Web.service;
 
 import com.cinemaweb.API.Cinema.Web.dto.response.TmdbMovieResult;
+import com.cinemaweb.API.Cinema.Web.exception.AppException;
+import com.cinemaweb.API.Cinema.Web.exception.ErrorCode;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -18,6 +22,7 @@ import java.util.stream.StreamSupport;
 
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@Slf4j
 public class TmdbService {
 
     @Value("${tmdb.api-key}")
@@ -32,6 +37,7 @@ public class TmdbService {
     final RestTemplate restTemplate = new RestTemplate();
     final ObjectMapper objectMapper = new ObjectMapper();
 
+    @CircuitBreaker(name = "tmdb", fallbackMethod = "searchMoviesFallback")
     public List<TmdbMovieResult> searchMovies(String query) {
         String url = UriComponentsBuilder.fromHttpUrl(baseUrl + "/search/movie")
                 .queryParam("api_key", apiKey)
@@ -57,6 +63,7 @@ public class TmdbService {
         }
     }
 
+    @CircuitBreaker(name = "tmdb", fallbackMethod = "getMovieDetailFallback")
     public TmdbMovieResult getMovieDetail(int tmdbId) {
         String detailUrl = UriComponentsBuilder.fromHttpUrl(baseUrl + "/movie/" + tmdbId)
                 .queryParam("api_key", apiKey)
@@ -155,5 +162,15 @@ public class TmdbService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private List<TmdbMovieResult> searchMoviesFallback(String query, Throwable t) {
+        log.warn("TMDB circuit open for searchMovies query={}: {}", query, t.getMessage());
+        throw new AppException(ErrorCode.TMDB_UNAVAILABLE);
+    }
+
+    private TmdbMovieResult getMovieDetailFallback(int tmdbId, Throwable t) {
+        log.warn("TMDB circuit open for getMovieDetail tmdbId={}: {}", tmdbId, t.getMessage());
+        throw new AppException(ErrorCode.TMDB_UNAVAILABLE);
     }
 }

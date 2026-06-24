@@ -12,6 +12,7 @@ import com.cinemaweb.API.Cinema.Web.enums.BookingStatus;
 import com.cinemaweb.API.Cinema.Web.enums.PaymentStatus;
 import com.cinemaweb.API.Cinema.Web.enums.SeatState;
 import com.cinemaweb.API.Cinema.Web.enums.TicketTransferStatus;
+import com.cinemaweb.API.Cinema.Web.event.SeatsChangedEvent;
 import com.cinemaweb.API.Cinema.Web.exception.AppException;
 import com.cinemaweb.API.Cinema.Web.exception.ErrorCode;
 import com.cinemaweb.API.Cinema.Web.mapper.BookingFoodAndDrinkMapper;
@@ -20,6 +21,7 @@ import com.cinemaweb.API.Cinema.Web.mapper.BookingSeatMapper;
 import com.cinemaweb.API.Cinema.Web.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -73,6 +75,9 @@ public class BookingService {
     @Autowired
     private StringRedisTemplate redisTemplate;
 
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
+
     // Thời hạn giữ ghế tạm (phút) khi user đang thanh toán — đồng bộ với SeatScheduleService.
     @Value("${booking.hold-minutes:8}")
     private long holdMinutes;
@@ -99,7 +104,10 @@ public class BookingService {
     public List<BookingResponse> getAllMyBooking() {
         var context = SecurityContextHolder.getContext();
         String userId = context.getAuthentication().getName();
-        List<Booking> owned = bookingRepository.findAllByUser_ID(userId).orElse(List.of());
+        // Chỉ hiện vé đã thanh toán (PAID). Đơn PENDING (đang/đã bỏ ngang ở VNPay) và CANCELLED
+        // không phải vé hợp lệ -> ẩn khỏi lịch sử.
+        List<Booking> owned = bookingRepository.findAllByUser_ID(userId).orElse(List.of())
+                .stream().filter(b -> b.getStatus() == BookingStatus.PAID).toList();
 
         // Vé đã chuyển nhượng đi (ACCEPTED): vẫn giữ bản ghi cho người gửi, gắn nhãn người nhận.
         Map<Integer, String> transferredTo = new HashMap<>();
@@ -254,7 +262,11 @@ public class BookingService {
                 .method("VNPAY")
                 .createdAt(now)
                 .build();
-        return paymentRepository.save(payment);
+        Payment saved = paymentRepository.save(payment);
+
+        // Ghế đã chuyển sang hard hold -> báo realtime cho client đang xem suất này.
+        eventPublisher.publishEvent(new SeatsChangedEvent(booking.getSchedule().getScheduleId()));
+        return saved;
     }
 
     // Thanh toán thành công: đơn -> PAID, ghế (đang hard hold qua booking_seat) chuyển BOOKED.
@@ -268,6 +280,8 @@ public class BookingService {
             ss.setSeatState(SeatState.BOOKED);
             seatScheduleRepository.save(ss);
         }
+        // Ghế -> BOOKED: báo realtime cho client đang xem suất này.
+        eventPublisher.publishEvent(new SeatsChangedEvent(booking.getSchedule().getScheduleId()));
     }
 
     // Huỷ đơn PENDING (thanh toán thất bại/huỷ hoặc hết hạn): xoá booking_seat + đồ ăn để nhả
@@ -289,6 +303,8 @@ public class BookingService {
                 bookingFoodAndDrinkRepository.findByBooking_BookingId(booking.getBookingId()));
         booking.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(booking);
+        // Ghế đã nhả -> báo realtime cho client đang xem suất này.
+        eventPublisher.publishEvent(new SeatsChangedEvent(booking.getSchedule().getScheduleId()));
     }
 
     // Cron: huỷ các đơn PENDING đã quá hạn giữ ghế (expires_at) và nhả ghế.

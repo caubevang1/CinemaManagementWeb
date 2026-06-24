@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, InputNumber, Row, Col } from 'antd';
 import moment from 'moment';
@@ -13,6 +13,7 @@ import { LayDanhSachPhongVeService, DatVe, LayDanhSachGheTheoSuat, LayThongTinFo
 import { datGhe, layDanhSachPhongVe, xoaDanhSachGheDangDat } from '../../redux/reducers/BookingReducer';
 import { callApiThongTinNguoiDung } from '../../redux/reducers/UserReducer';
 import { layThongTinPhong } from '../../services/CinemaService';
+import { connectSeatSocket, disconnectSeatSocket } from '../../utils/seatSocket';
 
 // Chuẩn hoá 1 ghế-suất từ API về dạng dùng trong redux.
 const mapSeat = (s) => ({
@@ -60,6 +61,17 @@ const BookingTicketPage = () => {
             console.error('Lỗi tải lại ghế:', e);
         }
     }, [scheduleId, thongTinPhim, dispatch]);
+
+    // Ref giữ bản reloadSeatsOnly mới nhất để callback socket không bị stale closure.
+    const reloadRef = useRef(reloadSeatsOnly);
+    useEffect(() => { reloadRef.current = reloadSeatsOnly; }, [reloadSeatsOnly]);
+
+    // Realtime: subscribe /topic/seats/{scheduleId}; có thay đổi (người khác giữ/nhả/đặt) -> tải lại ghế.
+    useEffect(() => {
+        if (!scheduleId) return;
+        connectSeatSocket(scheduleId, () => reloadRef.current());
+        return () => disconnectSeatSocket();
+    }, [scheduleId]);
 
     // Hết thời gian giữ ghế: nhả đồng hồ, xoá lựa chọn, quay về sơ đồ ghế, tải lại trạng thái.
     const handleExpire = useCallback(() => {
@@ -222,13 +234,15 @@ const BookingTicketPage = () => {
                                     return <div key={i} style={{ width: 40, height: 40, margin: 4 }} />;
                                 }
 
-                                // Đã đặt, hoặc đang được NGƯỜI KHÁC giữ -> không chọn được.
+                                // Đã đặt (BOOKED) hoặc đang được NGƯỜI KHÁC giữ (HELD) -> không chọn được.
+                                const booked = ghe.seatState === 'BOOKED';
                                 const heldByOther = ghe.seatState === 'HELD' && !ghe.heldByMe;
-                                const unavailable = ghe.seatState === 'BOOKED' || heldByOther;
+                                const unavailable = booked || heldByOther;
                                 const selecting = danhSachGheDangDat.some(d => d.seatId === ghe.seatId);
 
                                 let background = seatTypeColor(ghe.seatType);
-                                if (unavailable) background = '#ccc';
+                                if (booked) background = '#ccc';            // đã đặt: xám nhạt
+                                else if (heldByOther) background = '#6b7280'; // đang giữ: xám đậm
                                 else if (selecting) background = '#F97316';
 
                                 return (
@@ -252,7 +266,7 @@ const BookingTicketPage = () => {
                                             transition: 'transform 0.2s ease',
                                         }}
                                     >
-                                        {unavailable ? <FontAwesomeIcon icon={faXmark} /> : ghe.seatNumber}
+                                        {booked ? <FontAwesomeIcon icon={faXmark} /> : ghe.seatNumber}
                                     </button>
                                 );
                             })}
@@ -279,8 +293,20 @@ const BookingTicketPage = () => {
                         <span>Đang chọn</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 24, height: 24, background: '#ccc', borderRadius: 4 }}></div>
-                        <span>Đã đặt / đang giữ</span>
+                        <div style={{
+                            width: 24, height: 24, background: '#6b7280', borderRadius: 4,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12
+                        }}>9</div>
+                        <span>Đang giữ</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{
+                            width: 24, height: 24, background: '#ccc', borderRadius: 4,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12
+                        }}>
+                            <FontAwesomeIcon icon={faXmark} />
+                        </div>
+                        <span>Đã đặt</span>
                     </div>
                 </div>
             </div>

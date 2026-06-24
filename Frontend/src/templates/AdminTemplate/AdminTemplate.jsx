@@ -6,6 +6,7 @@ import {
     SnippetsOutlined,
     FileAddOutlined,
     ShoppingCartOutlined,
+    HeartOutlined,
 } from '@ant-design/icons';
 import { Layout, Menu } from 'antd';
 import React, { useEffect, useState } from 'react';
@@ -147,11 +148,16 @@ export default function AdminTemplate() {
                                                 },
                                             ]
                                         },
+                                        {
+                                            key: '6',
+                                            icon: <HeartOutlined />,
+                                            label: <NavLink to='health'>System Health</NavLink>
+                                        },
                                     ]}
                                 />
                             </Sider>
                             <Layout className="site-layout">
-                                <Header className="site-layout-background pl-4 text-[1.8rem]">
+                                <Header className="site-layout-background pl-4 text-[1.8rem] flex items-center justify-between">
                                     {React.createElement(
                                         collapsed ? MenuUnfoldOutlined : MenuFoldOutlined,
                                         {
@@ -159,6 +165,9 @@ export default function AdminTemplate() {
                                             onClick: () => setCollapsed(!collapsed),
                                         }
                                     )}
+                                    <span className="text-sm text-white pr-4">
+                                        Admin: <span className="text-orange-400 font-semibold">{userInfo?.username}</span>
+                                    </span>
                                 </Header>
                                 <Content
                                     className="site-layout-background contentAdmin"

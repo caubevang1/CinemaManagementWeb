@@ -3,6 +3,7 @@ package com.cinemaweb.API.Cinema.Web.service;
 import com.cinemaweb.API.Cinema.Web.dto.response.SeatScheduleResponse;
 import com.cinemaweb.API.Cinema.Web.entity.SeatSchedule;
 import com.cinemaweb.API.Cinema.Web.enums.SeatState;
+import com.cinemaweb.API.Cinema.Web.event.SeatsChangedEvent;
 import com.cinemaweb.API.Cinema.Web.exception.AppException;
 import com.cinemaweb.API.Cinema.Web.exception.ErrorCode;
 import com.cinemaweb.API.Cinema.Web.mapper.SeatScheduleMapper;
@@ -10,6 +11,7 @@ import com.cinemaweb.API.Cinema.Web.repository.BookingSeatRepository;
 import com.cinemaweb.API.Cinema.Web.repository.SeatScheduleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -36,6 +38,9 @@ public class SeatScheduleService {
 
     @Autowired
     StringRedisTemplate redisTemplate;
+
+    @Autowired
+    ApplicationEventPublisher eventPublisher;
 
     // Thời hạn giữ ghế tạm (phút) khi user đang thanh toán.
     @Value("${booking.hold-minutes:8}")
@@ -116,6 +121,9 @@ public class SeatScheduleService {
             throw ex;
         }
 
+        // Báo realtime cho các client đang xem suất này (ghế chuyển sang HELD).
+        publishSeatsChanged(seatSchedules.get(0).getSchedule().getScheduleId());
+
         return seatSchedules.stream().map(ss -> {
             SeatScheduleResponse r = seatScheduleMapper.toSeatSchedule(ss);
             applyHeld(r, userId, userId);
@@ -133,6 +141,16 @@ public class SeatScheduleService {
                 redisTemplate.delete(key);
             }
         }
+        // Báo realtime: ghế trở lại AVAILABLE. Lấy scheduleId từ 1 ghế bất kỳ trong lô.
+        if (!seatScheduleIds.isEmpty()) {
+            seatScheduleRepository.findBySeatScheduleId(seatScheduleIds.get(0))
+                    .ifPresent(ss -> publishSeatsChanged(ss.getSchedule().getScheduleId()));
+        }
+    }
+
+    // Phát domain event; SeatsChangedBridge broadcast STOMP sau khi transaction commit.
+    public void publishSeatsChanged(int scheduleId) {
+        eventPublisher.publishEvent(new SeatsChangedEvent(scheduleId));
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

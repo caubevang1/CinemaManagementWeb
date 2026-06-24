@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 public class BookingFoodAndDrinkResponse {
     int bookingId;
     int foodAndDrinkId;
+    String foodAndDrinkName;
     int quantity;
     BigDecimal price;
 }

@@ -15,6 +15,9 @@ public enum ErrorCode {
     // ─────────────── 9xxx: System/Internal Errors ───────────────
     UNKNOWN_EXCEPTION(9000, "Unknown error!", HttpStatus.INTERNAL_SERVER_ERROR),
     RUNTIME_EXCEPTION(9001, "Runtime error!", HttpStatus.INTERNAL_SERVER_ERROR),
+    TOO_MANY_REQUESTS(9002, "Too many requests, please try again later.", HttpStatus.TOO_MANY_REQUESTS),
+    EMAIL_SERVICE_UNAVAILABLE(9003, "Email service is temporarily unavailable!", HttpStatus.SERVICE_UNAVAILABLE),
+    TMDB_UNAVAILABLE(9004, "Movie database service is temporarily unavailable!", HttpStatus.SERVICE_UNAVAILABLE),
 
     // ─────────────── 1xxx: User-related Errors ───────────────
     USER_EXISTED(1001, "User already exists!", HttpStatus.BAD_REQUEST),

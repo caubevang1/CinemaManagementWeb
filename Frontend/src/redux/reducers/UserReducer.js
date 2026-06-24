@@ -78,6 +78,7 @@ export const callApiThongTinNguoiDung = async (dispatch) => {
         dispatch(setUserInfor(apiNguoiDung.data.body))
     } catch (error) {
         removeLocalStorage(LOCALSTORAGE_USER)
+        dispatch(setStatusLogin(false))
     }
 }
 

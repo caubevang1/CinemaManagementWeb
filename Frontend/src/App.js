@@ -1,4 +1,4 @@
-import { Route, Routes, unstable_HistoryRouter as HistoryRouter } from 'react-router-dom'
+import { Navigate, Route, Routes, unstable_HistoryRouter as HistoryRouter } from 'react-router-dom'
 import { history } from './utils/history'
 import AdminTemplate from './templates/AdminTemplate/AdminTemplate'
 import Login from './pages/User/Login';
@@ -55,7 +55,8 @@ function App() {
                     <Route path='messages' element={<Messages />} />
                 </Route>
                 <Route path='/admin' element={<AdminTemplate />}>
-                    <Route path='/admin' index element={<Dashboard />} />
+                    <Route path='/admin' index element={<Navigate to="/admin/user" replace />} />
+                    <Route path='health' element={<Dashboard />} />
                     <Route path='user' element={<Users />} />
                     <Route path='user/edit/:id' element={<EditUser />} />
                     <Route path='film' element={<Film />} />

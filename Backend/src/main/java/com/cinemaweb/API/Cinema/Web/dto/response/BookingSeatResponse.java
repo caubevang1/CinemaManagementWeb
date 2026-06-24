@@ -14,5 +14,6 @@ public class BookingSeatResponse {
     int id;
     int bookingId;
     int seatScheduleId;
+    String seatLabel;
     BigDecimal price;
 }

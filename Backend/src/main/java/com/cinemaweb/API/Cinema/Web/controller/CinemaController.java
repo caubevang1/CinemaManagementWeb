@@ -4,6 +4,7 @@ import com.cinemaweb.API.Cinema.Web.dto.request.CinemaRequest;
 import com.cinemaweb.API.Cinema.Web.dto.response.ApiResponse;
 import com.cinemaweb.API.Cinema.Web.dto.response.CinemaResponse;
 import com.cinemaweb.API.Cinema.Web.entity.Cinema;
+import com.cinemaweb.API.Cinema.Web.search.CinemaSearchService;
 import com.cinemaweb.API.Cinema.Web.service.CinemaService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,18 @@ import java.util.List;
 public class CinemaController {
     @Autowired
     private CinemaService cinemaService;
+
+    @Autowired
+    private CinemaSearchService cinemaSearchService;
+
+    // Tìm kiếm full-text qua RediSearch theo tên/địa chỉ rạp.
+    @GetMapping("/search")
+    public ApiResponse<List<CinemaResponse>> searchCinemas(
+            @RequestParam(name = "q", required = false) String q) {
+        return ApiResponse.<List<CinemaResponse>>builder()
+                .body(cinemaSearchService.search(q))
+                .build();
+    }
 
     @GetMapping
     public ApiResponse<List<CinemaResponse>> getAllCinemas() {

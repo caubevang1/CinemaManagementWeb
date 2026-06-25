@@ -1,6 +1,7 @@
 package com.cinemaweb.API.Cinema.Web.configuration;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +20,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 
@@ -55,6 +57,7 @@ public class SecurityConfig {
             "/payment/vnpay-ipn",
             "/booking/{bookingId}",
             "/cinemas",
+            "/cinemas/search",
             "/cinemas/{cinemaId}",
             "/movies",
             "/movies/{movieId}",
@@ -70,6 +73,10 @@ public class SecurityConfig {
             "/comment/movie/{movieId}"
     };
 
+
+    // Danh sách origin FE được phép (CORS), nạp từ cấu hình cors.allowed-origins (env CORS_ALLOWED_ORIGINS).
+    @Value("${cors.allowed-origins}")
+    private String allowedOrigins;
 
     @Autowired
     private CustomJwtDecoder customJwtDecoder;
@@ -139,8 +146,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // origin FE của bạn
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        // origin FE của bạn — đọc từ cấu hình, hỗ trợ nhiều origin ngăn cách bằng dấu phẩy
+        config.setAllowedOrigins(Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList());
         config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

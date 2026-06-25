@@ -4,6 +4,7 @@ import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import com.cinemaweb.API.Cinema.Web.exception.AppException;
 import com.cinemaweb.API.Cinema.Web.exception.ErrorCode;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -54,7 +55,14 @@ public class CloudinaryService {
     }
 
     private String uploadFallback(MultipartFile file, String folder, Throwable t) {
-        log.warn("Cloudinary circuit open for upload: {}", t.getMessage());
+        if (t instanceof CallNotPermittedException) {          // circuit ĐANG MỞ
+            log.warn("Cloudinary circuit OPEN, từ chối upload");
+            throw new AppException(ErrorCode.CLOUDINARY_UNAVAILABLE);
+        }
+        if (t instanceof AppException ae) {                    // giữ FILE_EMPTY/INVALID_FILE_TYPE/UPLOAD_FAILED
+            throw ae;
+        }
+        log.error("Cloudinary upload failed: {}", t.getMessage());
         throw new AppException(ErrorCode.UPLOAD_FAILED);
     }
 

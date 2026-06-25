@@ -24,7 +24,10 @@ public interface FriendshipRepository extends JpaRepository<Friendship, Integer>
                                        @Param("status") FriendshipStatus status);
 
     // Mọi quan hệ (PENDING/ACCEPTED) liên quan tới user, bất kể chiều — dùng cho tìm bạn.
-    @Query("SELECT f FROM Friendship f WHERE f.requester.ID = :userId OR f.addressee.ID = :userId")
+    // JOIN FETCH requester + addressee để nạp trong 1 query: @ManyToOne mặc định EAGER nên nếu
+    // không fetch sẵn sẽ sinh N+1 (mỗi friendship một select phụ) khi đọc requester/addressee.
+    @Query("SELECT f FROM Friendship f JOIN FETCH f.requester JOIN FETCH f.addressee " +
+            "WHERE f.requester.ID = :userId OR f.addressee.ID = :userId")
     List<Friendship> findAllInvolving(@Param("userId") String userId);
 
     // Hai người đã là bạn bè (ACCEPTED), bất kể chiều gửi lời mời.

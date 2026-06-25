@@ -37,7 +37,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     // endpoint tag → {limit, windowSeconds}
     private static final Map<String, int[]> RULES = Map.of(
             "auth:login",           new int[]{10, 60},
-            "auth:forget-password", new int[]{3,  300},
+            "auth:forget-password", new int[]{10, 60},
             "auth:reset-password",  new int[]{5,  300},
             "users:sign-up",        new int[]{3,  900},
             "booking",              new int[]{5,  60},
@@ -66,7 +66,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             res.setContentType(MediaType.APPLICATION_JSON_VALUE);
             res.setHeader("Retry-After", String.valueOf(rule[1]));
             res.getWriter().write(objectMapper.writeValueAsString(
-                    Map.of("code", 9002, "message", "Too many requests, please try again later.")));
+                    Map.of("code", 9002, "message", "Bạn thao tác quá nhanh, vui lòng thử lại sau giây lát!")));
             return;
         }
 

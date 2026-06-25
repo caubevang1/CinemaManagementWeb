@@ -17,6 +17,7 @@ import com.cinemaweb.API.Cinema.Web.mapper.UserMapper;
 import com.cinemaweb.API.Cinema.Web.repository.FriendshipRepository;
 import com.cinemaweb.API.Cinema.Web.repository.RoleRepository;
 import com.cinemaweb.API.Cinema.Web.repository.UserRepository;
+import com.cinemaweb.API.Cinema.Web.search.UserSearchService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -44,6 +45,7 @@ public class UserService {
     EmailService emailService;
     CloudinaryService cloudinaryService;
     FriendshipRepository friendshipRepository;
+    UserSearchService userSearchService;
 
     public UserResponse getById(String id) {
         return userMapper.toUserResponse(userRepository.findById(id)
@@ -73,20 +75,32 @@ public class UserService {
             statusByUser.put(otherId, f.getStatus());
         }
 
+        // Ứng viên từ RediSearch; nếu Redis Stack lỗi thì rơi về SQL LIKE để không mất chức năng.
+        List<FriendSearchResponse> candidates;
+        try {
+            candidates = userSearchService.search(q.trim());
+        } catch (Exception e) {
+            log.warn("RediSearch user search thất bại, fallback sang SQL: {}", e.getMessage());
+            candidates = userRepository.searchUsers(q.trim(), selfId).stream()
+                    .map(u -> FriendSearchResponse.builder()
+                            .id(u.getID())
+                            .username(u.getUsername())
+                            .firstName(u.getFirstName())
+                            .lastName(u.getLastName())
+                            .avatar(u.getAvatar())
+                            .email(u.getEmail())
+                            .build())
+                    .collect(java.util.stream.Collectors.toList());
+        }
+
         List<FriendSearchResponse> result = new ArrayList<>();
-        for (User u : userRepository.searchUsers(q.trim(), selfId)) {
-            FriendshipStatus status = statusByUser.get(u.getID());
-            String statusStr = status == FriendshipStatus.ACCEPTED ? "ACCEPTED"
-                    : status == FriendshipStatus.PENDING ? "PENDING" : "NONE";
-            result.add(FriendSearchResponse.builder()
-                    .id(u.getID())
-                    .username(u.getUsername())
-                    .firstName(u.getFirstName())
-                    .lastName(u.getLastName())
-                    .avatar(u.getAvatar())
-                    .email(u.getEmail())
-                    .friendshipStatus(statusStr)
-                    .build());
+        for (FriendSearchResponse r : candidates) {
+            if (selfId.equals(r.getId())) // loại chính mình khỏi kết quả
+                continue;
+            FriendshipStatus status = statusByUser.get(r.getId());
+            r.setFriendshipStatus(status == FriendshipStatus.ACCEPTED ? "ACCEPTED"
+                    : status == FriendshipStatus.PENDING ? "PENDING" : "NONE");
+            result.add(r);
         }
         // Sắp xếp: bạn bè (ACCEPTED) trước, rồi PENDING, cuối là NONE.
         result.sort(Comparator.comparingInt(r -> switch (r.getFriendshipStatus()) {
@@ -131,7 +145,9 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         var roles = roleRepository.findAllById(List.of(Roles.USER.name()));
         user.setRoles(new HashSet<>(roles));
-        return userMapper.toUserResponse(userRepository.save(user));
+        User saved = userRepository.save(user);
+        userSearchService.upsert(saved); // đồng bộ chỉ mục tìm kiếm
+        return userMapper.toUserResponse(saved);
     }
 
     public UserResponse update(UserUpdateRequest request, String id) {
@@ -147,7 +163,9 @@ public class UserService {
                 throw new AppException(ErrorCode.INVALID_ROLE);
             user.setRoles(new HashSet<>(roles));
         }
-        UserResponse response = userMapper.toUserResponse(userRepository.save(user));
+        User saved = userRepository.save(user);
+        userSearchService.upsert(saved); // đồng bộ chỉ mục tìm kiếm
+        UserResponse response = userMapper.toUserResponse(saved);
         // Avatar đã đổi sang URL mới -> xóa ảnh cũ trên Cloudinary (best-effort)
         if (request.getAvatar() != null && !request.getAvatar().equals(oldAvatar))
             cloudinaryService.deleteByUrl(oldAvatar);
@@ -158,10 +176,12 @@ public class UserService {
         if (!userRepository.existsById(id))
             throw new AppException(ErrorCode.USER_NOT_EXISTS);
         userRepository.deleteById(id);
+        userSearchService.remove(id); // gỡ khỏi chỉ mục tìm kiếm
     }
 
     public void deleteAll() {
         userRepository.deleteAll();
+        userSearchService.reindexAll(); // làm rỗng chỉ mục tìm kiếm
     }
 
 

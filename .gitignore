@@ -2,3 +2,4 @@
 
 # Biến môi trường cho docker-compose (chứa NGROK_AUTHTOKEN...) — không commit token thật.
 .env
+WORKLOG.md

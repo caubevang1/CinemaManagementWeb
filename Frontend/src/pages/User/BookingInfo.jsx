@@ -216,7 +216,9 @@ const ThongTinBooking = () => {
             {bookings.length === 0 ? (
                 <p style={styles.noBookingMessage}>Không có thông tin booking nào</p>
             ) : (
-                bookings.map((booking, index) => (
+                [...bookings]
+                    .sort((a, b) => new Date(b.bookingDay) - new Date(a.bookingDay))
+                    .map((booking, index) => (
                     <div key={index} style={styles.bookingItem}>
                         <h3 style={styles.movieName}>{booking.movieName}</h3>
 

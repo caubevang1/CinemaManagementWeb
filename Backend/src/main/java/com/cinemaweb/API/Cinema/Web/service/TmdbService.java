@@ -5,6 +5,7 @@ import com.cinemaweb.API.Cinema.Web.exception.AppException;
 import com.cinemaweb.API.Cinema.Web.exception.ErrorCode;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
@@ -165,12 +166,20 @@ public class TmdbService {
     }
 
     private List<TmdbMovieResult> searchMoviesFallback(String query, Throwable t) {
-        log.warn("TMDB circuit open for searchMovies query={}: {}", query, t.getMessage());
-        throw new AppException(ErrorCode.TMDB_UNAVAILABLE);
+        if (t instanceof CallNotPermittedException) {          // circuit ĐANG MỞ
+            log.warn("TMDB circuit OPEN, searchMovies query={}", query);
+            throw new AppException(ErrorCode.TMDB_UNAVAILABLE);
+        }
+        log.error("TMDB search failed query={}: {}", query, t.getMessage());
+        throw new AppException(ErrorCode.TMDB_FETCH_FAILED);
     }
 
     private TmdbMovieResult getMovieDetailFallback(int tmdbId, Throwable t) {
-        log.warn("TMDB circuit open for getMovieDetail tmdbId={}: {}", tmdbId, t.getMessage());
-        throw new AppException(ErrorCode.TMDB_UNAVAILABLE);
+        if (t instanceof CallNotPermittedException) {          // circuit ĐANG MỞ
+            log.warn("TMDB circuit OPEN, getMovieDetail tmdbId={}", tmdbId);
+            throw new AppException(ErrorCode.TMDB_UNAVAILABLE);
+        }
+        log.error("TMDB detail failed tmdbId={}: {}", tmdbId, t.getMessage());
+        throw new AppException(ErrorCode.TMDB_FETCH_FAILED);
     }
 }

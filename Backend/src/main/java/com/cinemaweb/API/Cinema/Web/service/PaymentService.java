@@ -58,7 +58,10 @@ public class PaymentService {
         // cùng mốc với đồng hồ ở trang ghế/combo (một timer duy nhất). Dùng giờ server (GMT+7),
         // khớp với LocalDateTime.now() mà toàn bộ luồng giữ ghế đang dùng.
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
-        LocalDateTime createdAt = LocalDateTime.now();
+        // Mốc tạo giao dịch lấy đúng từ payment.createdAt (thời điểm tạo đơn) thay vì now(), để
+        // CreateDate khớp với đồng hồ giữ ghế kể cả khi URL được dựng lại sau đó. Fallback now()
+        // nếu vì lý do nào đó đơn chưa có createdAt.
+        LocalDateTime createdAt = payment.getCreatedAt() != null ? payment.getCreatedAt() : LocalDateTime.now();
         vnp_Params.put("vnp_CreateDate", createdAt.format(fmt));
         LocalDateTime expire = payment.getBooking().getExpiresAt();
         if (expire == null || !expire.isAfter(createdAt)) {

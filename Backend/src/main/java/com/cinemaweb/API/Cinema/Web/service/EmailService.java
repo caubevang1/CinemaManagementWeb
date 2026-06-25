@@ -5,6 +5,7 @@ import com.cinemaweb.API.Cinema.Web.dto.response.BookingSeatResponse;
 import com.cinemaweb.API.Cinema.Web.entity.User;
 import com.cinemaweb.API.Cinema.Web.exception.AppException;
 import com.cinemaweb.API.Cinema.Web.exception.ErrorCode;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -50,8 +51,12 @@ public class EmailService {
     }
 
     private void sendResetPasswordOtpFallback(User user, String otpToken, Throwable t) {
-        log.warn("Email circuit open for sendResetPasswordOtp user={}: {}", user.getUsername(), t.getMessage());
-        throw new AppException(ErrorCode.EMAIL_SERVICE_UNAVAILABLE);
+        if (t instanceof CallNotPermittedException) {          // circuit ĐANG MỞ
+            log.warn("Email circuit OPEN, user={}", user.getUsername());
+            throw new AppException(ErrorCode.EMAIL_SERVICE_UNAVAILABLE);
+        }
+        log.error("Send OTP email failed user={}: {}", user.getUsername(), t.getMessage());
+        throw new AppException(ErrorCode.EMAIL_SEND_FAILED);
     }
 
     // Gửi email xác nhận vé sau khi thanh toán thành công. Được gọi bởi worker RabbitMQ

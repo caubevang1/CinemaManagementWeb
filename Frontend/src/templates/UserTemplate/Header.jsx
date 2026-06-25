@@ -159,7 +159,9 @@ const Header = () => {
                     {isLogin && (
                         <li className="mr-3">
                             <NavLink className="block no-underline text-black font-medium text-base hover:text-red-600 hover:text-underline py-2 px-4" to='messages' onClick={onClose}>
-                                <Badge count={totalUnread} size="small" offset={[10, 0]}>Bạn bè</Badge>
+                                <Badge count={totalUnread} size="small" offset={[10, 0]}>
+                                    <span className="text-black font-medium text-base hover:text-red-600">Bạn bè</span>
+                                </Badge>
                             </NavLink>
                         </li>
                     )}
@@ -196,7 +198,9 @@ const Header = () => {
                             {isLogin && (
                                 <li className="mr-3">
                                     <NavLink className="inline-block no-underline text-black font-medium md:text-base hover:text-red-600 hover:text-underline py-2 px-4" to='messages'>
-                                        <Badge count={totalUnread} size="small" offset={[10, 0]}>Bạn bè</Badge>
+                                        <Badge count={totalUnread} size="small" offset={[10, 0]}>
+                                            <span className="text-black font-medium md:text-base hover:text-red-600">Bạn bè</span>
+                                        </Badge>
                                     </NavLink>
                                 </li>
                             )}

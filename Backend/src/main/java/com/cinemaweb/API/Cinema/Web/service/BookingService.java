@@ -19,7 +19,7 @@ import com.cinemaweb.API.Cinema.Web.mapper.BookingFoodAndDrinkMapper;
 import com.cinemaweb.API.Cinema.Web.mapper.BookingMapper;
 import com.cinemaweb.API.Cinema.Web.mapper.BookingSeatMapper;
 import com.cinemaweb.API.Cinema.Web.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -38,45 +38,21 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class BookingService {
-    @Autowired
-    private BookingRepository bookingRepository;
-
-    @Autowired
-    private BookingMapper bookingMapper;
-
-    @Autowired
-    private BookingSeatRepository bookingSeatRepository;
-
-    @Autowired
-    private BookingFoodAndDrinkRepository bookingFoodAndDrinkRepository;
-
-    @Autowired
-    private BookingFoodAndDrinkMapper bookingFoodAndDrinkMapper;
-
-    @Autowired
-    private BookingSeatMapper bookingSeatMapper;
-
-    @Autowired
-    private SeatScheduleRepository seatScheduleRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private FoodAndDrinkRepository foodAndDrinkRepository;
-
-    @Autowired
-    private TicketTransferRepository ticketTransferRepository;
-
-    @Autowired
-    private PaymentRepository paymentRepository;
-
-    @Autowired
-    private StringRedisTemplate redisTemplate;
-
-    @Autowired
-    private ApplicationEventPublisher eventPublisher;
+    private final BookingRepository bookingRepository;
+    private final BookingMapper bookingMapper;
+    private final BookingSeatRepository bookingSeatRepository;
+    private final BookingFoodAndDrinkRepository bookingFoodAndDrinkRepository;
+    private final BookingFoodAndDrinkMapper bookingFoodAndDrinkMapper;
+    private final BookingSeatMapper bookingSeatMapper;
+    private final SeatScheduleRepository seatScheduleRepository;
+    private final UserRepository userRepository;
+    private final FoodAndDrinkRepository foodAndDrinkRepository;
+    private final TicketTransferRepository ticketTransferRepository;
+    private final PaymentRepository paymentRepository;
+    private final StringRedisTemplate redisTemplate;
+    private final ApplicationEventPublisher eventPublisher;
 
     // Thời hạn giữ ghế tạm (phút) khi user đang thanh toán — đồng bộ với SeatScheduleService.
     @Value("${booking.hold-minutes:8}")

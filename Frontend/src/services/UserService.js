@@ -18,7 +18,8 @@ export const LayDanhSachLoaiNguoiDung = () => http.get(`/roles`)
 
 export const CapNhatThongTinNguoiDung = (user) => http.put(`/users/${user.id}`, user)
 
-export const sendOtpEmail = (data) => http.post('/auth/forget-password', data);
+// Endpoint gửi OTP gọi SMTP đồng bộ (Brevo có thể mất >10s) → nới timeout riêng cho request này.
+export const sendOtpEmail = (data) => http.post('/auth/forget-password', data, { timeout: 30000 });
 
 export const resetPasswordWithOtp = (otp, data) => http.post(`/auth/reset-password/${otp}`, data);
 

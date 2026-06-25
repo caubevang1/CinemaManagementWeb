@@ -96,9 +96,11 @@ public class AuthenticationController {
     }
 
     @PostMapping("/forget-password")
-    public ApiResponse<String> getPasswordOTP(@RequestBody PasswordOtpRequest request) {
-        return ApiResponse.<String>builder()
-                .message(authenticationService.getPasswordToken(request.getEmail()))
+    public ApiResponse<Integer> getPasswordOTP(@RequestBody PasswordOtpRequest request) {
+        int cooldown = authenticationService.getPasswordToken(request.getEmail());
+        return ApiResponse.<Integer>builder()
+                .message("Vui lòng kiểm tra email để lấy mã OTP đặt lại mật khẩu!")
+                .body(cooldown)
                 .build();
     }
 

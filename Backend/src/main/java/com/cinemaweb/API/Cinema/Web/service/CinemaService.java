@@ -6,7 +6,8 @@ import com.cinemaweb.API.Cinema.Web.entity.Cinema;
 import com.cinemaweb.API.Cinema.Web.configuration.CacheConfig;
 import com.cinemaweb.API.Cinema.Web.mapper.CinemaMapper;
 import com.cinemaweb.API.Cinema.Web.repository.CinemaRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.cinemaweb.API.Cinema.Web.search.CinemaSearchService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -15,12 +16,11 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class CinemaService {
-    @Autowired
-    private CinemaRepository cinemaRepository;
-
-    @Autowired
-    private CinemaMapper cinemaMapper;
+    private final CinemaRepository cinemaRepository;
+    private final CinemaMapper cinemaMapper;
+    private final CinemaSearchService cinemaSearchService;
 
 
     @Cacheable(value = CacheConfig.CINEMAS)
@@ -42,7 +42,8 @@ public class CinemaService {
         if(cinemaRepository.existsByCinemaName(cinemaCreateRequest.getCinemaName())) {
             throw new RuntimeException("You can't create because cinema name has existed!");
         }
-        cinemaRepository.save(cinemaMapper.toCinema(cinemaCreateRequest));
+        Cinema saved = cinemaRepository.save(cinemaMapper.toCinema(cinemaCreateRequest));
+        cinemaSearchService.upsert(saved); // đồng bộ chỉ mục tìm kiếm
     }
 
     @Caching(evict = {
@@ -54,7 +55,7 @@ public class CinemaService {
                 -> new RuntimeException("Cinema id is not found"));
         if(cinema.getCinemaName().equals(cinemaUpdateRequest.getCinemaName())) {
             cinemaMapper.toUpdateCinema(cinema, cinemaUpdateRequest);
-            cinemaRepository.save(cinema);
+            cinemaSearchService.upsert(cinemaRepository.save(cinema)); // đồng bộ chỉ mục tìm kiếm
         } else {
             if (cinemaRepository.existsByCinemaName(cinemaUpdateRequest.getCinemaName())) {
                 throw new RuntimeException("You can't update because cinema name has existed!");
@@ -71,5 +72,6 @@ public class CinemaService {
     })
     public void deleteCinema(String cinemaId) {
         cinemaRepository.deleteById(cinemaId);
+        cinemaSearchService.remove(Integer.parseInt(cinemaId)); // gỡ khỏi chỉ mục tìm kiếm
     }
 }

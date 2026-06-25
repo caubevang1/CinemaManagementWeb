@@ -136,26 +136,6 @@ export default function BookingTicketNow(props) {
             className="movie-search-card bg-white rounded-lg shadow-2xl py-7 px-8 w-full xl:w-3/4 mx-auto translate-y-[-50%] hidden md:block"
             style={{ position: 'relative', zIndex: 50 }}
         >
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                <svg
-                    width="22" height="22" viewBox="0 0 24 24" fill="none"
-                    stroke="#f97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                >
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-                <span style={{
-                    color: '#1e293b',
-                    fontSize: '16px',
-                    fontWeight: '700',
-                    letterSpacing: '0.5px',
-                    textTransform: 'uppercase',
-                }}>
-                    Tìm kiếm phim
-                </span>
-            </div>
-
             {/* Search Input */}
             <div style={{ position: 'relative' }}>
                 <div style={{

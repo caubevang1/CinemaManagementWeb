@@ -20,6 +20,9 @@ export const xoaPhong = (id) => http.delete(`/rooms/${id}`)
 
 export const layThongTinCumRap = () => http.get(`/cinemas`)
 
+// Tìm kiếm rạp full-text qua RediSearch (server-side) theo tên/địa chỉ.
+export const TimKiemCumRap = (q) => http.get(`/cinemas/search`, { params: { q } })
+
 export const layThongTinCumRapChiTiet = (id) => http.get(`/cinemas/${id}`)
 
 export const themCumRap = (data) => http.post(`/cinemas`, data)

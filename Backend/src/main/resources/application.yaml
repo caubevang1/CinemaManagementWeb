@@ -1,6 +1,11 @@
 server:
   port: 8080
 
+# Origin của frontend được phép gọi API (CORS). Nhiều origin ngăn cách bằng dấu phẩy.
+# Mặc định cho môi trường dev; production đặt qua biến môi trường CORS_ALLOWED_ORIGINS.
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
 management:
   endpoints:
     web:
@@ -99,18 +104,21 @@ resilience4j:
     instances:
       cloudinary:
         sliding-window-size: 5
+        minimum-number-of-calls: 3      # đủ 3 call mới đánh giá tỷ lệ lỗi (mặc định 100)
         failure-rate-threshold: 60
         wait-duration-in-open-state: 30s
         permitted-calls-in-half-open-state: 2
         register-health-indicator: true
       email:
         sliding-window-size: 5
+        minimum-number-of-calls: 3
         failure-rate-threshold: 60
         wait-duration-in-open-state: 60s
         permitted-calls-in-half-open-state: 2
         register-health-indicator: true
       tmdb:
         sliding-window-size: 10
+        minimum-number-of-calls: 5
         failure-rate-threshold: 50
         wait-duration-in-open-state: 30s
         permitted-calls-in-half-open-state: 3

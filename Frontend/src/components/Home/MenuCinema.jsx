@@ -1,24 +1,52 @@
-import React, { useEffect, useState } from 'react';
-import { Tabs } from 'antd';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Tabs, Input } from 'antd';
+import { debounce } from 'lodash';
 import moment from 'moment';
 import { useLocation } from 'react-router-dom';
 import useRoute from '../../hooks/useRoute';
-import { layThongTinCumRap, LayThongTinLichChieu } from '../../services/CinemaService';
+import { layThongTinCumRap, LayThongTinLichChieu, TimKiemCumRap } from '../../services/CinemaService';
 import { LayDanhSachPhim } from '../../services/FilmService';
+
+const { Search } = Input;
 
 export default function MenuCinema() {
     const location = useLocation();
     const { navigate } = useRoute();
 
-    const [cumRapList, setCumRapList] = useState([]);
+    const [cumRapList, setCumRapList] = useState([]); // toàn bộ rạp (master)
+    const [cumRapHienThi, setCumRapHienThi] = useState([]); // rạp đang hiển thị (sau lọc)
     const [phimList, setPhimList] = useState([]);
     const [lichChieuList, setLichChieuList] = useState([]);
+    const cumRapListRef = useRef([]); // giữ master để khôi phục khi xóa từ khóa (tránh stale closure)
 
     useEffect(() => {
-        layThongTinCumRap().then(res => setCumRapList(res.data.body)).catch(console.error);
+        layThongTinCumRap().then(res => {
+            const list = res.data.body || [];
+            setCumRapList(list);
+            setCumRapHienThi(list);
+            cumRapListRef.current = list;
+        }).catch(console.error);
         LayDanhSachPhim().then(res => setPhimList(res.data.body)).catch(console.error);
         LayThongTinLichChieu().then(res => setLichChieuList(res.data.body)).catch(console.error);
     }, []);
+
+    // Tìm rạp server-side qua RediSearch; debounce để hạn chế request khi gõ.
+    const runSearch = useCallback(
+        debounce(async (value) => {
+            const term = value.trim();
+            if (term === '') {
+                setCumRapHienThi(cumRapListRef.current);
+                return;
+            }
+            try {
+                const res = await TimKiemCumRap(term);
+                setCumRapHienThi(res.data.body || []);
+            } catch (error) {
+                console.error(error);
+            }
+        }, 300),
+        []
+    );
 
     useEffect(() => {
         if (location.hash) {
@@ -53,7 +81,10 @@ export default function MenuCinema() {
             return {
                 label: (
                     <div className="flex border-b pb-4">
-                        <div className="mr-4">
+                        <div
+                            className="mr-4 cursor-pointer"
+                            onClick={(e) => { e.stopPropagation(); navigate(`detail/${itemPhim.movieId}`); }}
+                        >
                             <img alt="poster"
                                 className='h-[130px] w-[100px] object-cover'
                                 src={itemPhim.moviePoster}
@@ -64,7 +95,10 @@ export default function MenuCinema() {
                             />
                         </div>
                         <div>
-                            <h2 className="font-bold text-left mb-2 text-sm uppercase">
+                            <h2
+                                className="font-bold text-left mb-2 text-sm uppercase cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); navigate(`detail/${itemPhim.movieId}`); }}
+                            >
                                 <span className="bg-red-600 p-1 rounded-md text-white text-sm">
                                     {itemPhim.hot === true ? 'C18' : 'C16'}
                                 </span>{' '}{itemPhim.movieName}
@@ -106,25 +140,40 @@ export default function MenuCinema() {
         <>
             {cumRapList.length ? (
                 <div id="menuCinema" className="MenuCinemaTabs hidden lg:block my-8">
-                    <Tabs
-                        className="shadow-xl pt-3"
-                        tabPosition="left"
-                        defaultActiveKey="0"
-                        items={cumRapList.map((itemCumRap, index) => ({
-                            label: (
-                                <div className="text-left border-b pb-4">
-                                    <h2 className="text-green-500 font-bold text-base">
-                                        {itemCumRap.cinemaName}
-                                    </h2>
-                                    <h3 className="text-gray-500 font-semibold text-sm">
-                                        {itemCumRap.cinemaAddress}
-                                    </h3>
-                                </div>
-                            ),
-                            key: index.toString(),
-                            children: renderDanhSachPhim(itemCumRap),
-                        }))}
-                    />
+                    {/* Card rạp: ô tìm rạp (server-side RediSearch) gộp chung với danh sách rạp/phim */}
+                    <div className="menuCinemaCard">
+                        <div className="p-4 border-b">
+                            <Search
+                                placeholder="Tìm rạp theo tên hoặc địa chỉ"
+                                size="large"
+                                allowClear
+                                onChange={(e) => runSearch(e.target.value)}
+                            />
+                        </div>
+                        {cumRapHienThi.length ? (
+                            <Tabs
+                                className="pt-3"
+                                tabPosition="left"
+                                defaultActiveKey="0"
+                                items={cumRapHienThi.map((itemCumRap, index) => ({
+                                    label: (
+                                        <div className="text-left border-b pb-4 whitespace-normal break-words">
+                                            <h2 className="text-green-500 font-bold text-base break-words">
+                                                {itemCumRap.cinemaName}
+                                            </h2>
+                                            <h3 className="text-gray-500 font-semibold text-sm break-words">
+                                                {itemCumRap.cinemaAddress}
+                                            </h3>
+                                        </div>
+                                    ),
+                                    key: index.toString(),
+                                    children: renderDanhSachPhim(itemCumRap),
+                                }))}
+                            />
+                        ) : (
+                            <h2 className="text-gray-500 text-center my-6 text-xl">Không tìm thấy rạp phù hợp</h2>
+                        )}
+                    </div>
                 </div>
             ) : (
                 <h2 className="text-white text-center my-6 text-2xl">Hiện tại không có lịch chiếu</h2>

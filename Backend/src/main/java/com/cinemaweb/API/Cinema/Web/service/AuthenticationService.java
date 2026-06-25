@@ -84,11 +84,11 @@ public class AuthenticationService {
     public TokenResult authenticate(AuthenticationRequest request) {
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
         var user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTS));
+                .orElseThrow(() -> new AppException(ErrorCode.LOGIN_FAILED));
         boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
 
         if (!authenticated)
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
+            throw new AppException(ErrorCode.LOGIN_FAILED);
 
         return generateTokenPair(user);
     }
@@ -146,7 +146,7 @@ public class AuthenticationService {
                 .build();
     }
 
-    public String getPasswordToken(String email) {
+    public int getPasswordToken(String email) {
         User user = userRepository.findByEmail(email).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTS));
         String userId = user.getID();
 
@@ -172,7 +172,7 @@ public class AuthenticationService {
         redisTemplate.opsForValue().set(PWD_OTP_USER_PREFIX + userId, token, PWD_OTP_TTL, TimeUnit.SECONDS);
         redisTemplate.opsForValue().set(PWD_OTP_CD_PREFIX + userId, "1", PWD_OTP_CD_TTL, TimeUnit.SECONDS);
 
-        return "Please check your email to get OTP used to reset your password!";
+        return (int) PWD_OTP_CD_TTL;   // số giây cooldown để FE đếm ngược nút gửi lại
     }
 
 
